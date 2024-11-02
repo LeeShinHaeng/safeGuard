@@ -1,6 +1,6 @@
 package com.capstone.safeGuard.util;
 
-import com.capstone.safeGuard.dto.TokenInfo;
+import com.capstone.safeGuard.member.apis.presentation.response.TokenInfo;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
