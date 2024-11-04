@@ -1,38 +1,32 @@
 package com.capstone.safeGuard.apis.map.presentation.request.coordinate;
 
-import com.capstone.safeGuard.domain.member.domain.Child;
 import com.capstone.safeGuard.domain.map.domain.Coordinate;
-import lombok.Getter;
-import lombok.Setter;
+import com.capstone.safeGuard.domain.member.domain.Child;
 
-@Getter
-@Setter
-public class AddAreaRequest {
-    public double xOfPointA;
-    public double yOfPointA;
-    public double xOfPointB;
-    public double yOfPointB;
-    public double xOfPointC;
-    public double yOfPointC;
-    public double xOfPointD;
-    public double yOfPointD;
+public record AddAreaRequest(
+	double xOfPointA,
+	double yOfPointA,
+	double xOfPointB,
+	double yOfPointB,
+	double xOfPointC,
+	double yOfPointC,
+	double xOfPointD,
+	double yOfPointD,
+	String childName
+) {
+	public Coordinate dtoToDomain(Child child, boolean isLiving) {
+		return Coordinate.builder()
+			.child(child)
+			.isLivingArea(isLiving)
 
-    private String childName;
-
-    public Coordinate dtoToDomain(Child child, boolean isLiving) {
-        return Coordinate.builder()
-                .child(child)
-                .isLivingArea(isLiving)
-
-                .xOfNorthEast(xOfPointA)
-                .yOfNorthEast(yOfPointA)
-                .xOfNorthWest(xOfPointB)
-                .yOfNorthWest(yOfPointB)
-                .xOfSouthWest(xOfPointC)
-                .yOfSouthWest(yOfPointC)
-                .xOfSouthEast(xOfPointD)
-                .yOfSouthEast(yOfPointD)
-
-                .build();
-    }
+			.xOfNorthEast(xOfPointA)
+			.yOfNorthEast(yOfPointA)
+			.xOfNorthWest(xOfPointB)
+			.yOfNorthWest(yOfPointB)
+			.xOfSouthWest(xOfPointC)
+			.yOfSouthWest(yOfPointC)
+			.xOfSouthEast(xOfPointD)
+			.yOfSouthEast(yOfPointD)
+			.build();
+	}
 }

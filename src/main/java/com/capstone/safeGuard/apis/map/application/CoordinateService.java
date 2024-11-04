@@ -23,7 +23,7 @@ public class CoordinateService {
 
     @Transactional
     public Long addForbiddenArea(AddAreaRequest addAreaRequest) {
-        Child foundChild = childRepository.findBychildName(addAreaRequest.getChildName());
+        Child foundChild = childRepository.findBychildName(addAreaRequest.childName());
         if (foundChild == null) {
             return 0L;
         }
@@ -40,7 +40,7 @@ public class CoordinateService {
     @Transactional
     public Long addLivingArea(AddAreaRequest addAreaRequest) {
         log.info("addLivingArea 도착");
-        Child foundChild = childRepository.findBychildName(addAreaRequest.getChildName());
+        Child foundChild = childRepository.findBychildName(addAreaRequest.childName());
         if (foundChild == null) {
             log.info("No Such Child");
             return 0L;
@@ -49,7 +49,7 @@ public class CoordinateService {
         Coordinate coordinate = addAreaRequest.dtoToDomain(foundChild, true);
 
         // child와 coordinate에 저장
-        log.info(addAreaRequest.getXOfPointA() + " = " + coordinate.getXOfSouthEast());
+        log.info(addAreaRequest.xOfPointA() + " = " + coordinate.getXOfSouthEast());
         foundChild.getLivingAreas().add(coordinate);
         coordinateRepository.save(coordinate);
 
@@ -59,8 +59,8 @@ public class CoordinateService {
 
     @Transactional
     public boolean deleteArea(DeleteAreaRequest dto) {
-        String areaID = dto.getAreaID();
-        String childName = dto.getChildName();
+        String areaID = dto.areaID();
+        String childName = dto.childName();
 
         log.info("deleteArea 시작");
         Child foundChild = childRepository.findBychildName(childName);

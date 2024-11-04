@@ -71,7 +71,7 @@ public class CoordinateController {
 		HashMap<String, ReadAreaResponse> result = new HashMap<>();
 
 		// 1. child에 저장되어 있는 coordinate 불러오기
-		ArrayList<Coordinate> coordinates = coordinateService.readAreasByChild(dto.getChildName());
+		ArrayList<Coordinate> coordinates = coordinateService.readAreasByChild(dto.childName());
 
 		// 2. responseDTO로 변경
 		for (Coordinate coordinate : coordinates) {
@@ -97,7 +97,7 @@ public class CoordinateController {
 	public ResponseEntity<Map<String, AreaDetailResponse>> areaDetail(@RequestBody AreaDetailRequest dto) {
 		Map<String, AreaDetailResponse> result = new HashMap<>();
 
-		Coordinate coordinate = coordinateService.findAreaById(dto.getAreaId());
+		Coordinate coordinate = coordinateService.findAreaById(dto.areaId());
 		if (coordinate == null) {
 			return ResponseEntity.status(400).build();
 		}
