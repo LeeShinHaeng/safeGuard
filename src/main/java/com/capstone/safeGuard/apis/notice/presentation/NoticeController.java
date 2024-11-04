@@ -55,12 +55,12 @@ public class NoticeController {
 			String format = notice.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
 
 			result.put(notice.getNoticeId() + "",
-				FindNotificationResponse.builder()
-					.child(notice.getChild().getChildName())
-					.title(tmpId)
-					.content(notice.getContent())
-					.date(format)
-					.build()
+				FindNotificationResponse.of(
+					tmpId,
+					notice.getContent(),
+					format,
+					notice.getChild().getChildName()
+				)
 			);
 		}
 
@@ -95,7 +95,6 @@ public class NoticeController {
 			// 마지막 상태 갱신
 			foundChild.setLastStatus(currentStatus);
 			log.warn("warn 전송 완료");
-			return;
 		} //else if ( lastStatus.equals("위험구역") && (currentStatus.equals("일반구역") || currentStatus.equals("안전구역")) ) {
 		else if (!lastStatus.equals(currentStatus)) {
 			if (!sendNoticeToMember(childParentingList, foundChild.getChildName(), NoticeLevel.INFO)) {

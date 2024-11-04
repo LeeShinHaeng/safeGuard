@@ -118,13 +118,13 @@ public class ConfirmController {
 			String format = confirm.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
 
 			result.put(confirm.getConfirmId() + "",
-				FindNotificationResponse.builder()
-					.child(confirm.getChild().getChildName())
-					.title(tmpId)
-					.content(confirm.getContent())
-					.date(format)
-					.senderId(confirm.getHelpingId().getHelper().getMemberId())
-					.build()
+				FindNotificationResponse.of(
+					tmpId,
+					confirm.getContent(),
+					format,
+					confirm.getChild().getChildName(),
+					confirm.getHelpingId().getHelper().getMemberId()
+				)
 			);
 		}
 
@@ -152,13 +152,13 @@ public class ConfirmController {
 			String format = confirm.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
 
 			result.put(confirm.getConfirmType() + "",
-				FindNotificationResponse.builder()
-					.child(confirm.getChild().getChildName())
-					.title(tmpId)
-					.content(confirm.getContent())
-					.date(format)
-					.senderId(confirm.getHelpingId().getHelper().getMemberId())
-					.build()
+				FindNotificationResponse.of(
+					tmpId,
+					confirm.getContent(),
+					format,
+					confirm.getChild().getChildName(),
+					confirm.getHelpingId().getHelper().getMemberId()
+				)
 			);
 		}
 

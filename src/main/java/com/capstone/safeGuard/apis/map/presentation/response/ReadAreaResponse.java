@@ -1,30 +1,32 @@
 package com.capstone.safeGuard.apis.map.presentation.response;
 
+import com.capstone.safeGuard.domain.map.domain.Coordinate;
 import lombok.Builder;
-import lombok.Getter;
 
-@Getter
-public class ReadAreaResponse {
-    private String isLiving;
-    public Double XOfPointA;
-    public Double YOfPointA;
-    public Double XOfPointB;
-    public Double YOfPointB;
-    public Double XOfPointC;
-    public Double YOfPointC;
-    public Double XOfPointD;
-    public Double YOfPointD;
+@Builder
+public record ReadAreaResponse(
+	String isLiving,
+	Double XOfPointA,
+	Double YOfPointA,
+	Double XOfPointB,
+	Double YOfPointB,
+	Double XOfPointC,
+	Double YOfPointC,
+	Double XOfPointD,
+	Double YOfPointD
+) {
 
-    @Builder
-    public ReadAreaResponse(String isLiving, Double XOfPointA, Double YOfPointA, Double XOfPointB, Double YOfPointB, Double XOfPointC, Double YOfPointC, Double XOfPointD, Double YOfPointD) {
-        this.isLiving = isLiving;
-        this.XOfPointA = XOfPointA;
-        this.YOfPointA = YOfPointA;
-        this.XOfPointB = XOfPointB;
-        this.YOfPointB = YOfPointB;
-        this.XOfPointC = XOfPointC;
-        this.YOfPointC = YOfPointC;
-        this.XOfPointD = XOfPointD;
-        this.YOfPointD = YOfPointD;
-    }
+	public static ReadAreaResponse from(Coordinate coordinate) {
+		return ReadAreaResponse.builder()
+			.isLiving(coordinate.isLivingArea() + "")
+			.XOfPointA(coordinate.getXOfNorthEast())
+			.YOfPointA(coordinate.getYOfNorthEast())
+			.XOfPointB(coordinate.getXOfNorthWest())
+			.YOfPointB(coordinate.getYOfNorthWest())
+			.XOfPointC(coordinate.getXOfSouthWest())
+			.YOfPointC(coordinate.getYOfSouthWest())
+			.XOfPointD(coordinate.getXOfSouthEast())
+			.YOfPointD(coordinate.getYOfSouthEast())
+			.build();
+	}
 }

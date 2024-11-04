@@ -166,13 +166,13 @@ public class EmergencyController {
 			String format = emergency.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
 
 			result.put(emergency.getEmergencyId() + "",
-				FindNotificationResponse.builder()
-					.title("도움 요청")
-					.content(emergency.getContent())
-					.child(emergency.getChild().getChildName())
-					.date(format)
-					.senderId(emergency.getSenderId().getMemberId())
-					.build()
+				FindNotificationResponse.of(
+					"도움 요청",
+					emergency.getContent(),
+					format,
+					emergency.getChild().getChildName(),
+					emergency.getSenderId().getMemberId()
+				)
 			);
 		}
 

@@ -76,17 +76,7 @@ public class CoordinateController {
 		// 2. responseDTO로 변경
 		for (Coordinate coordinate : coordinates) {
 			result.put(coordinate.getCoordinateId() + "",
-				ReadAreaResponse.builder()
-					.isLiving(coordinate.isLivingArea() + "")
-					.XOfPointA(coordinate.getXOfNorthEast())
-					.YOfPointA(coordinate.getYOfNorthEast())
-					.XOfPointB(coordinate.getXOfNorthWest())
-					.YOfPointB(coordinate.getYOfNorthWest())
-					.XOfPointC(coordinate.getXOfSouthWest())
-					.YOfPointC(coordinate.getYOfSouthWest())
-					.XOfPointD(coordinate.getXOfSouthEast())
-					.YOfPointD(coordinate.getYOfSouthEast())
-					.build()
+				ReadAreaResponse.from(coordinate)
 			);
 		}
 
@@ -103,17 +93,7 @@ public class CoordinateController {
 		}
 
 		result.put(coordinate.getCoordinateId() + "",
-			AreaDetailResponse.builder()
-				.isLiving(coordinate.isLivingArea() + "")
-				.XOfPointA(coordinate.getXOfNorthEast())
-				.YOfPointA(coordinate.getYOfNorthEast())
-				.XOfPointB(coordinate.getXOfNorthWest())
-				.YOfPointB(coordinate.getYOfNorthWest())
-				.XOfPointC(coordinate.getXOfSouthWest())
-				.YOfPointC(coordinate.getYOfSouthWest())
-				.XOfPointD(coordinate.getXOfSouthEast())
-				.YOfPointD(coordinate.getYOfSouthEast())
-				.build()
+			AreaDetailResponse.from(coordinate)
 		);
 
 		return ResponseEntity.ok().body(result);
