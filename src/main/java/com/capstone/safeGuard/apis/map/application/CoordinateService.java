@@ -2,8 +2,8 @@ package com.capstone.safeGuard.apis.map.application;
 
 import com.capstone.safeGuard.domain.member.domain.Child;
 import com.capstone.safeGuard.domain.map.domain.Coordinate;
-import com.capstone.safeGuard.apis.map.presentation.request.coordinate.AddAreaDTO;
-import com.capstone.safeGuard.apis.map.presentation.request.coordinate.DeleteAreaDTO;
+import com.capstone.safeGuard.apis.map.presentation.request.coordinate.AddAreaRequest;
+import com.capstone.safeGuard.apis.map.presentation.request.coordinate.DeleteAreaRequest;
 import com.capstone.safeGuard.domain.member.infrastructure.ChildRepository;
 import com.capstone.safeGuard.domain.map.infrastructure.CoordinateRepository;
 import lombok.RequiredArgsConstructor;
@@ -22,13 +22,13 @@ public class CoordinateService {
     private final ChildRepository childRepository;
 
     @Transactional
-    public Long addForbiddenArea(AddAreaDTO addAreaDTO) {
-        Child foundChild = childRepository.findBychildName(addAreaDTO.getChildName());
+    public Long addForbiddenArea(AddAreaRequest addAreaRequest) {
+        Child foundChild = childRepository.findBychildName(addAreaRequest.getChildName());
         if (foundChild == null) {
             return 0L;
         }
 
-        Coordinate coordinate = addAreaDTO.dtoToDomain(foundChild, false);
+        Coordinate coordinate = addAreaRequest.dtoToDomain(foundChild, false);
         // child와 coordinate에 저장
         foundChild.getForbiddenAreas().add(coordinate);
         coordinateRepository.save(coordinate);
@@ -38,18 +38,18 @@ public class CoordinateService {
     }
 
     @Transactional
-    public Long addLivingArea(AddAreaDTO addAreaDTO) {
+    public Long addLivingArea(AddAreaRequest addAreaRequest) {
         log.info("addLivingArea 도착");
-        Child foundChild = childRepository.findBychildName(addAreaDTO.getChildName());
+        Child foundChild = childRepository.findBychildName(addAreaRequest.getChildName());
         if (foundChild == null) {
             log.info("No Such Child");
             return 0L;
         }
 
-        Coordinate coordinate = addAreaDTO.dtoToDomain(foundChild, true);
+        Coordinate coordinate = addAreaRequest.dtoToDomain(foundChild, true);
 
         // child와 coordinate에 저장
-        log.info(addAreaDTO.getXOfPointA() + " = " + coordinate.getXOfSouthEast());
+        log.info(addAreaRequest.getXOfPointA() + " = " + coordinate.getXOfSouthEast());
         foundChild.getLivingAreas().add(coordinate);
         coordinateRepository.save(coordinate);
 
@@ -58,7 +58,7 @@ public class CoordinateService {
     }
 
     @Transactional
-    public boolean deleteArea(DeleteAreaDTO dto) {
+    public boolean deleteArea(DeleteAreaRequest dto) {
         String areaID = dto.getAreaID();
         String childName = dto.getChildName();
 

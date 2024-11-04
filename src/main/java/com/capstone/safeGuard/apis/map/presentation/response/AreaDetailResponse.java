@@ -6,7 +6,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class AreaDetailResponseDTO {
+public class AreaDetailResponse {
     private String isLiving;
     public Double XOfPointA;
     public Double YOfPointA;
@@ -18,7 +18,7 @@ public class AreaDetailResponseDTO {
     public Double YOfPointD;
 
     @Builder
-    public AreaDetailResponseDTO(String isLiving, Double XOfPointA, Double YOfPointA, Double XOfPointB, Double YOfPointB, Double XOfPointC, Double YOfPointC, Double XOfPointD, Double YOfPointD) {
+    public AreaDetailResponse(String isLiving, Double XOfPointA, Double YOfPointA, Double XOfPointB, Double YOfPointB, Double XOfPointC, Double YOfPointC, Double XOfPointD, Double YOfPointD) {
         this.isLiving = isLiving;
         this.XOfPointA = XOfPointA;
         this.YOfPointA = YOfPointA;

@@ -1,13 +1,15 @@
 package com.capstone.safeGuard.apis.map.presentation;
 
-import com.capstone.safeGuard.domain.map.domain.Coordinate;
-import com.capstone.safeGuard.apis.map.presentation.request.coordinate.AddAreaDTO;
-import com.capstone.safeGuard.apis.map.presentation.request.coordinate.AreaDetailRequestDTO;
-import com.capstone.safeGuard.apis.map.presentation.request.coordinate.DeleteAreaDTO;
-import com.capstone.safeGuard.apis.map.presentation.request.coordinate.GetChildNameDTO;
-import com.capstone.safeGuard.apis.map.presentation.response.AreaDetailResponseDTO;
-import com.capstone.safeGuard.apis.map.presentation.response.ReadAreaResponseDTO;
+import com.capstone.safeGuard.apis.general.presentation.response.StatusOnlyResponse;
 import com.capstone.safeGuard.apis.map.application.CoordinateService;
+import com.capstone.safeGuard.apis.map.presentation.request.coordinate.AddAreaRequest;
+import com.capstone.safeGuard.apis.map.presentation.request.coordinate.AreaDetailRequest;
+import com.capstone.safeGuard.apis.map.presentation.request.coordinate.DeleteAreaRequest;
+import com.capstone.safeGuard.apis.map.presentation.request.coordinate.GetChildNameRequest;
+import com.capstone.safeGuard.apis.map.presentation.response.AreaDetailResponse;
+import com.capstone.safeGuard.apis.map.presentation.response.AreaPersistResponse;
+import com.capstone.safeGuard.apis.map.presentation.response.ReadAreaResponse;
+import com.capstone.safeGuard.domain.map.domain.Coordinate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -23,114 +25,97 @@ import java.util.Map;
 @RequiredArgsConstructor
 @Slf4j
 public class CoordinateController {
-    private final CoordinateService coordinateService;
+	private final CoordinateService coordinateService;
 
-    @PostMapping("/add-safe")
-    public ResponseEntity<Map<String, String>> addLivingArea(@RequestBody AddAreaDTO dto){
-        HashMap<String, String> result = new HashMap<>();
+	@PostMapping("/add-safe")
+	public ResponseEntity<AreaPersistResponse> addLivingArea(@RequestBody AddAreaRequest dto) {
+		Long areaId = coordinateService.addLivingArea(dto);
+		if (areaId == 0L) {
+			return ResponseEntity.
+				status(400)
+				.body(AreaPersistResponse.of(400, ""));
+		}
 
-        log.info("add-safe 받았음");
-        Long areaId = coordinateService.addLivingArea(dto);
-        if(areaId == 0L){
-            log.info("add-safe 실패");
-            return addErrorStatus(result);
-        }
+		return ResponseEntity
+			.ok(AreaPersistResponse.of(200, areaId.toString()));
+	}
 
-        log.info("add-safe 성공");
-        result.put("areaId", areaId.toString());
-        return addOkStatus(result);
-    }
+	@PostMapping("/add-dangerous")
+	public ResponseEntity<AreaPersistResponse> addForbiddenArea(@RequestBody AddAreaRequest dto) {
+		Long areaId = coordinateService.addForbiddenArea(dto);
+		if (areaId == 0L) {
+			return ResponseEntity.
+				status(400)
+				.body(AreaPersistResponse.of(400, ""));
+		}
 
+		return ResponseEntity
+			.ok(AreaPersistResponse.of(200, areaId.toString()));
+	}
 
-    @PostMapping("/add-dangerous")
-    public ResponseEntity<Map<String, String>> addForbiddenArea(@RequestBody AddAreaDTO dto){
-        HashMap<String, String> result = new HashMap<>();
+	@PostMapping("/delete-area")
+	public ResponseEntity<StatusOnlyResponse> deleteArea(@RequestBody DeleteAreaRequest dto) {
+		if (!coordinateService.deleteArea(dto)) {
+			return ResponseEntity.
+				status(400)
+				.body(StatusOnlyResponse.of(400));
+		}
 
-        log.info("add-dangerous 받았음");
-        Long areaId = coordinateService.addForbiddenArea(dto);
-        if(areaId == 0L){
-            log.info("add-dangerous 실패");
-            return addErrorStatus(result);
-        }
+		return ResponseEntity
+			.ok(StatusOnlyResponse.of(200));
+	}
 
-        log.info("add-dangerous 성공");
-        result.put("areaId", areaId.toString());
-        return addOkStatus(result);
-    }
+	// TODO 키 값이 아이디인데 DTO로 리턴하기는 어려울 것 같음, 해결할 방법 찾기
+	@PostMapping("/read-areas")
+	public ResponseEntity<Map<String, ReadAreaResponse>> readAreas(@RequestBody GetChildNameRequest dto) {
+		HashMap<String, ReadAreaResponse> result = new HashMap<>();
 
-    @PostMapping("/delete-area")
-    public ResponseEntity<Map<String, String>> deleteArea(@RequestBody DeleteAreaDTO dto){
-        HashMap<String, String> result = new HashMap<>();
+		// 1. child에 저장되어 있는 coordinate 불러오기
+		ArrayList<Coordinate> coordinates = coordinateService.readAreasByChild(dto.getChildName());
 
-        if(! coordinateService.deleteArea(dto)){
-            return addErrorStatus(result);
-        }
+		// 2. responseDTO로 변경
+		for (Coordinate coordinate : coordinates) {
+			result.put(coordinate.getCoordinateId() + "",
+				ReadAreaResponse.builder()
+					.isLiving(coordinate.isLivingArea() + "")
+					.XOfPointA(coordinate.getXOfNorthEast())
+					.YOfPointA(coordinate.getYOfNorthEast())
+					.XOfPointB(coordinate.getXOfNorthWest())
+					.YOfPointB(coordinate.getYOfNorthWest())
+					.XOfPointC(coordinate.getXOfSouthWest())
+					.YOfPointC(coordinate.getYOfSouthWest())
+					.XOfPointD(coordinate.getXOfSouthEast())
+					.YOfPointD(coordinate.getYOfSouthEast())
+					.build()
+			);
+		}
 
-        return addOkStatus(result);
-    }
+		return ResponseEntity.ok().body(result);
+	}
 
-    @PostMapping("/read-areas")
-    public ResponseEntity<Map<String, ReadAreaResponseDTO>> readAreas(@RequestBody GetChildNameDTO dto){
-        HashMap<String, ReadAreaResponseDTO> result = new HashMap<>();
+	@PostMapping("/area-detail")
+	public ResponseEntity<Map<String, AreaDetailResponse>> areaDetail(@RequestBody AreaDetailRequest dto) {
+		Map<String, AreaDetailResponse> result = new HashMap<>();
 
-        // 1. child에 저장되어 있는 coordinate 불러오기
-        ArrayList<Coordinate> coordinates = coordinateService.readAreasByChild(dto.getChildName());
+		Coordinate coordinate = coordinateService.findAreaById(dto.getAreaId());
+		if (coordinate == null) {
+			return ResponseEntity.status(400).build();
+		}
 
-        // 2. responseDTO로 변경
-        for (Coordinate coordinate : coordinates) {
-            result.put(coordinate.getCoordinateId()+"",
-                    ReadAreaResponseDTO.builder()
-                            .isLiving(coordinate.isLivingArea() + "")
-                            .XOfPointA(coordinate.getXOfNorthEast())
-                            .YOfPointA(coordinate.getYOfNorthEast())
-                            .XOfPointB(coordinate.getXOfNorthWest())
-                            .YOfPointB(coordinate.getYOfNorthWest())
-                            .XOfPointC(coordinate.getXOfSouthWest())
-                            .YOfPointC(coordinate.getYOfSouthWest())
-                            .XOfPointD(coordinate.getXOfSouthEast())
-                            .YOfPointD(coordinate.getYOfSouthEast())
-                            .build()
-            );
-        }
+		result.put(coordinate.getCoordinateId() + "",
+			AreaDetailResponse.builder()
+				.isLiving(coordinate.isLivingArea() + "")
+				.XOfPointA(coordinate.getXOfNorthEast())
+				.YOfPointA(coordinate.getYOfNorthEast())
+				.XOfPointB(coordinate.getXOfNorthWest())
+				.YOfPointB(coordinate.getYOfNorthWest())
+				.XOfPointC(coordinate.getXOfSouthWest())
+				.YOfPointC(coordinate.getYOfSouthWest())
+				.XOfPointD(coordinate.getXOfSouthEast())
+				.YOfPointD(coordinate.getYOfSouthEast())
+				.build()
+		);
 
-        return ResponseEntity.ok().body(result);
-    }
-
-    @PostMapping("/area-detail")
-    public ResponseEntity<Map<String, AreaDetailResponseDTO>> areaDetail(@RequestBody AreaDetailRequestDTO dto){
-        Map<String, AreaDetailResponseDTO> result = new HashMap<>();
-
-        Coordinate coordinate = coordinateService.findAreaById(dto.getAreaId());
-        if(coordinate == null){
-            return ResponseEntity.status(400).build();
-        }
-
-        result.put(coordinate.getCoordinateId()+"",
-                AreaDetailResponseDTO.builder()
-                        .isLiving(coordinate.isLivingArea() + "")
-                        .XOfPointA(coordinate.getXOfNorthEast())
-                        .YOfPointA(coordinate.getYOfNorthEast())
-                        .XOfPointB(coordinate.getXOfNorthWest())
-                        .YOfPointB(coordinate.getYOfNorthWest())
-                        .XOfPointC(coordinate.getXOfSouthWest())
-                        .YOfPointC(coordinate.getYOfSouthWest())
-                        .XOfPointD(coordinate.getXOfSouthEast())
-                        .YOfPointD(coordinate.getYOfSouthEast())
-                        .build()
-        );
-
-        return ResponseEntity.ok().body(result);
-    }
-
-
-
-    private static ResponseEntity<Map<String, String>> addOkStatus(Map<String, String> result) {
-        result.put("status", "200");
-        return ResponseEntity.ok().body(result);
-    }
-
-    private static ResponseEntity<Map<String, String>> addErrorStatus(Map<String, String> result) {
-        result.put("status", "400");
-        return ResponseEntity.status(400).body(result);
-    }
+		return ResponseEntity.ok().body(result);
+	}
 }
