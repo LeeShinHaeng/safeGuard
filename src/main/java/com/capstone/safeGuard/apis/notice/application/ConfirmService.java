@@ -29,6 +29,26 @@ public class ConfirmService {
     private final HelpingRepository helpingRepository;
 
     @Transactional
+    public boolean sendConfirmToAllMember(ArrayList<Member> foundMemberList, Child foundChild, Helping helping, String confirmType) {
+        for (Member member : foundMemberList) {
+            if (!sendConfirmToMember(member, foundChild, helping, confirmType)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    @Transactional
+    public boolean sendConfirmToMember(Member receiverId, Child child, Helping helping, String confirmType) {
+        Confirm confirm = saveConfirm(receiverId, child, helping, confirmType);
+        if (confirm == null) {
+            return false;
+        }
+
+        return sendNotificationTo(receiverId.getMemberId(), confirm);
+    }
+
+    @Transactional
     public Confirm saveConfirm(Member receiverId, Child child, Helping helping, String confirmType) {
         Confirm confirm = new Confirm();
         if( confirmType.equals("ARRIVED") ){
