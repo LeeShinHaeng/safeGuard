@@ -37,12 +37,12 @@ public class ConfirmController {
 	@PostMapping("/send-confirm")
 	public ResponseEntity<StatusOnlyResponse> sendConfirm(@RequestBody SendConfirmRequest dto) {
 		// 1. chidname 확인
-		Child foundChild = memberService.findChildByChildName(dto.getChildName());
+		Child foundChild = memberService.findChildByChildName(dto.childName());
 		if (foundChild == null) {
 			return addErrorStatus();
 		}
 
-		Optional<Member> foundSender = memberRepository.findById(dto.getSenderId());
+		Optional<Member> foundSender = memberRepository.findById(dto.senderId());
 		if (foundSender.isEmpty()) {
 			return addErrorStatus();
 		}
@@ -63,7 +63,7 @@ public class ConfirmController {
 		for (Helping helping : childHelpingList) {
 			if (helping.getHelper().equals(foundSender.get())) {
 				// helper가 존재하면 confirm 전송
-				isSent = confirmService.sendConfirmToAllMember(foundMemberList, foundChild, helping, dto.getConfirmType());
+				isSent = confirmService.sendConfirmToAllMember(foundMemberList, foundChild, helping, dto.confirmType());
 			}
 		}
 		if (!isSent) {
@@ -77,7 +77,7 @@ public class ConfirmController {
 	public ResponseEntity<Map<String, FindNotificationResponse>> receivedConfirm(@RequestBody GetIdDTO dto) {
 		HashMap<String, FindNotificationResponse> result = new HashMap<>();
 
-		List<Confirm> confirmList = confirmService.findReceivedConfirmByMember(dto.getId());
+		List<Confirm> confirmList = confirmService.findReceivedConfirmByMember(dto.id());
 		if (confirmList == null || confirmList.isEmpty()) {
 			return ResponseEntity.status(400).body(result);
 		}
@@ -103,7 +103,7 @@ public class ConfirmController {
 	public ResponseEntity<Map<String, FindNotificationResponse>> sentConfirm(@RequestBody GetIdDTO dto) {
 		HashMap<String, FindNotificationResponse> result = new HashMap<>();
 
-		List<Confirm> confirmList = confirmService.findSentConfirmByMember(dto.getId());
+		List<Confirm> confirmList = confirmService.findSentConfirmByMember(dto.id());
 		if (confirmList == null || confirmList.isEmpty()) {
 			return ResponseEntity.status(400).body(result);
 		}

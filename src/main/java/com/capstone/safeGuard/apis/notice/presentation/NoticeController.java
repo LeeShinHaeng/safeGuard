@@ -35,7 +35,7 @@ public class NoticeController {
 	public ResponseEntity<Map<String, FindNotificationResponse>> receivedNotice(@RequestBody GetIdDTO dto) {
 		HashMap<String, FindNotificationResponse> result = new HashMap<>();
 
-		List<Notice> noticeList = noticeService.findNoticeByMember(dto.getId());
+		List<Notice> noticeList = noticeService.findNoticeByMember(dto.id());
 		if (noticeList == null || noticeList.isEmpty()) {
 			return ResponseEntity.status(400).body(result);
 		}
@@ -65,7 +65,7 @@ public class NoticeController {
 
 	@PostMapping("/fatal")
 	public ResponseEntity<StatusOnlyResponse> fatal(@RequestBody FatalRequest dto) {
-		Child foundChild = childRepository.findBychildName(dto.getChildName());
+		Child foundChild = childRepository.findBychildName(dto.childName());
 
 		List<Parenting> childParentingList = foundChild.getParentingList();
 		if (!noticeService.sendNoticeToMember(childParentingList, foundChild.getChildName(), NoticeLevel.FATAL)) {

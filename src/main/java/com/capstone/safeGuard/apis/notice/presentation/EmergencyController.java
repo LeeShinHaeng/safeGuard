@@ -33,7 +33,9 @@ public class EmergencyController {
 	private final EmergencyService emergencyService;
 
 	@PostMapping("/emergency")
-	public ResponseEntity<StatusOnlyResponse> emergencyCall(@RequestBody EmergencyRequestDTO emergencyRequestDto) {
+	public ResponseEntity<StatusOnlyResponse> emergencyCall(
+		@RequestBody EmergencyRequestDTO emergencyRequestDto
+	) {
 		// 1. 반경 [] km내의 member들만 리스트업
 		ArrayList<String> neighborMemberList
 			= emergencyService.getNeighborMembers(emergencyRequestDto, DISTANCE);
@@ -50,18 +52,9 @@ public class EmergencyController {
 		return addOkStatus();
 	}
 
-	private static ResponseEntity<StatusOnlyResponse> addOkStatus() {
-		return ResponseEntity.ok(StatusOnlyResponse.of(200));
-	}
-
-	private static ResponseEntity<StatusOnlyResponse> addErrorStatus() {
-		return ResponseEntity.status(BAD_REQUEST)
-			.body(StatusOnlyResponse.of(400));
-	}
-
 	@PostMapping("/sent-emergency")
 	public ResponseEntity<Map<String, FindNotificationResponse>> showSentEmergency(@RequestBody MemberIdDTO dto) {
-		List<Emergency> sentEmergencyList = emergencyService.getSentEmergency(dto.getMemberId());
+		List<Emergency> sentEmergencyList = emergencyService.getSentEmergency(dto.memberId());
 
 		HashMap<String, FindNotificationResponse> result = addEmergencyList(sentEmergencyList);
 		if (result == null) {
@@ -73,7 +66,7 @@ public class EmergencyController {
 
 	@PostMapping("/received-emergency")
 	public ResponseEntity<Map<String, FindNotificationResponse>> showReceivedEmergency(@RequestBody MemberIdDTO dto) {
-		List<Emergency> receivedEmergencyList = emergencyService.getReceivedEmergency(dto.getMemberId());
+		List<Emergency> receivedEmergencyList = emergencyService.getReceivedEmergency(dto.memberId());
 
 		HashMap<String, FindNotificationResponse> result = addEmergencyList(receivedEmergencyList);
 		if (result == null) {
@@ -94,7 +87,7 @@ public class EmergencyController {
 
 	@PostMapping("/delete-comment")
 	public ResponseEntity<StatusOnlyResponse> deleteComment(@RequestBody CommentIdDTO dto) {
-		if (!emergencyService.deleteComment(dto.getCommentId())) {
+		if (!emergencyService.deleteComment(dto.commentId())) {
 			return addErrorStatus();
 		}
 
@@ -105,12 +98,12 @@ public class EmergencyController {
 	public ResponseEntity<Map<String, CommentResponseDTO>> emergencyDetail(@RequestBody EmergencyIdDTO dto) {
 		HashMap<String, CommentResponseDTO> result = new HashMap<>();
 
-		Emergency emergency = emergencyService.getEmergencyDetail(dto.getEmergencyId());
+		Emergency emergency = emergencyService.getEmergencyDetail(dto.emergencyId());
 		if (emergency == null) {
 			return ResponseEntity.status(400).body(null);
 		}
 
-		List<Comment> commentList = emergencyService.getCommentOfEmergency(dto.getEmergencyId());
+		List<Comment> commentList = emergencyService.getCommentOfEmergency(dto.emergencyId());
 		for (Comment comment : commentList) {
 			String format = comment.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
 
@@ -148,5 +141,14 @@ public class EmergencyController {
 		}
 
 		return result;
+	}
+
+	private static ResponseEntity<StatusOnlyResponse> addOkStatus() {
+		return ResponseEntity.ok(StatusOnlyResponse.of(200));
+	}
+
+	private static ResponseEntity<StatusOnlyResponse> addErrorStatus() {
+		return ResponseEntity.status(BAD_REQUEST)
+			.body(StatusOnlyResponse.of(400));
 	}
 }

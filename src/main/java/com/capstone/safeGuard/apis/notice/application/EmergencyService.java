@@ -57,7 +57,7 @@ public class EmergencyService {
 	public ArrayList<String> getNeighborMembers(EmergencyRequestDTO dto, int distance) {
 		ArrayList<String> memberIdList = new ArrayList<>();
 		ArrayList<Member> allMember = memberService.findAllMember();
-		Child foundChild = childRepository.findByChildName(dto.getChildName());
+		Child foundChild = childRepository.findByChildName(dto.childName());
 
 		for (Member member : allMember) {
 			if (isNeighbor(foundChild.getLatitude(), foundChild.getLongitude(), member.getLatitude(), member.getLongitude(), distance)) {
@@ -90,9 +90,9 @@ public class EmergencyService {
 	@Transactional
 	public Emergency saveEmergency(String receiverId, EmergencyRequestDTO dto) {
 		// Emergency table에 저장
-		Member member = memberRepository.findById(dto.getSenderId()).orElseThrow(NoSuchElementException::new);
-		Child child = childRepository.findBychildName(dto.getChildName());
-		String content = "피보호자 이름 : " + dto.getChildName();
+		Member member = memberRepository.findById(dto.senderId()).orElseThrow(NoSuchElementException::new);
+		Child child = childRepository.findBychildName(dto.childName());
+		String content = "피보호자 이름 : " + dto.childName();
 
 		Emergency emergency = dto.dtoToDomain(member, child, content);
 		emergencyRepository.save(emergency);
@@ -113,11 +113,9 @@ public class EmergencyService {
 	}
 
 	private FCMNotificationDTO makeMessage(String receiverId, Emergency emergency) {
-		return FCMNotificationDTO.builder()
-			.title(emergency.getTitle())
-			.body(emergency.getContent())
-			.receiverId(receiverId)
-			.build();
+		return FCMNotificationDTO.of(
+			receiverId, emergency.getTitle(), emergency.getContent()
+		);
 	}
 
 	public List<Emergency> getSentEmergency(String memberId) {
@@ -151,8 +149,8 @@ public class EmergencyService {
 
 	@Transactional
 	public boolean writeComment(CommentRequestDTO commentRequestDTO) {
-		Optional<Member> foundMember = memberRepository.findById(commentRequestDTO.getCommentatorId());
-		Optional<Emergency> foundEmergency = emergencyRepository.findById(Long.valueOf(commentRequestDTO.getEmergencyId()));
+		Optional<Member> foundMember = memberRepository.findById(commentRequestDTO.commentatorId());
+		Optional<Emergency> foundEmergency = emergencyRepository.findById(Long.valueOf(commentRequestDTO.emergencyId()));
 		if (foundMember.isEmpty() || foundEmergency.isEmpty()) {
 			return false;
 		}
@@ -160,7 +158,7 @@ public class EmergencyService {
 		Comment comment = Comment.builder()
 			.commentator(foundMember.get())
 			.emergency(foundEmergency.get())
-			.comment(commentRequestDTO.getCommentContent())
+			.comment(commentRequestDTO.commentContent())
 			.build();
 
 		commentRepository.save(comment);

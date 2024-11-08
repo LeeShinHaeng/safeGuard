@@ -177,11 +177,9 @@ public class NoticeService {
 			tmpTitle = "피보호자가 위험 구역에 진입하였습니다.";
 		}
 
-		return FCMNotificationDTO.builder()
-			.title(tmpTitle)
-			.body(notice.getContent())
-			.receiverId(notice.getReceiverId())
-			.build();
+		return FCMNotificationDTO.of(
+			notice.getReceiverId(), tmpTitle, notice.getContent()
+		);
 	}
 
 	public List<Notice> findNoticeByMember(String memberId) {

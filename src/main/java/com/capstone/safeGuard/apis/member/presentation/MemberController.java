@@ -247,7 +247,7 @@ public class MemberController {
 			return ResponseEntity.badRequest().body(errorMessage);
 		}
 
-		String nickname = memberService.getNicknameById(dto.getId());
+		String nickname = memberService.getNicknameById(dto.id());
 		if (nickname != null) {
 			return ResponseEntity.ok().body(nickname);
 		} else {
@@ -464,7 +464,7 @@ public class MemberController {
 	@PostMapping("/duplicate-check-member")
 	public ResponseEntity<Map<String, String>> duplicateCheckMember(@RequestBody GetIdDTO dto) {
 		Map<String, String> result = new HashMap<>();
-		if (memberService.isPresent(dto.getId(), true)) {
+		if (memberService.isPresent(dto.id(), true)) {
 			return addErrorStatus(result);
 		}
 
@@ -474,7 +474,7 @@ public class MemberController {
 	@PostMapping("/duplicate-check-child")
 	public ResponseEntity<Map<String, String>> duplicateCheckChild(@RequestBody GetIdDTO dto) {
 		Map<String, String> result = new HashMap<>();
-		if (memberService.isPresent(dto.getId(), false)) {
+		if (memberService.isPresent(dto.id(), false)) {
 			return addErrorStatus(result);
 		}
 
@@ -506,7 +506,7 @@ public class MemberController {
 	@PostMapping("/find-member-by-child")
 	public ResponseEntity<Map<String, Map<String, String>>> findMemberByChild(@RequestBody GetIdDTO dto) {
 		Map<String, Map<String, String>> result = new HashMap<>();
-		Child foundChild = memberService.findChildByChildName(dto.getId());
+		Child foundChild = memberService.findChildByChildName(dto.id());
 		if (foundChild == null) {
 			return ResponseEntity.status(400).build();
 		}

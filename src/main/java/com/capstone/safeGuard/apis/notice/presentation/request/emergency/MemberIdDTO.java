@@ -1,8 +1,7 @@
 package com.capstone.safeGuard.apis.notice.presentation.request.emergency;
 
-import lombok.Getter;
+public record MemberIdDTO(
+	String memberId
+) {
 
-@Getter
-public class MemberIdDTO {
-    private String memberId;
 }
