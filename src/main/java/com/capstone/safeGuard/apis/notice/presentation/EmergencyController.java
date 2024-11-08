@@ -1,6 +1,9 @@
 package com.capstone.safeGuard.apis.notice.presentation;
 
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
+
 import com.capstone.safeGuard.apis.comment.presentation.response.CommentResponseDTO;
+import com.capstone.safeGuard.apis.general.presentation.response.StatusOnlyResponse;
 import com.capstone.safeGuard.apis.notice.application.EmergencyService;
 import com.capstone.safeGuard.apis.notice.presentation.request.emergency.CommentIdDTO;
 import com.capstone.safeGuard.apis.notice.presentation.request.emergency.CommentRequestDTO;
@@ -11,10 +14,7 @@ import com.capstone.safeGuard.apis.notice.presentation.response.FindNotification
 import com.capstone.safeGuard.domain.comment.domain.Comment;
 import com.capstone.safeGuard.domain.notice.domain.Emergency;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -28,59 +28,35 @@ import java.util.Map;
 @RestController
 @RequiredArgsConstructor
 public class EmergencyController {
-
 	// 몇 km 이내의 사람들에게 알림을 보낼 것인지
 	static public final int DISTANCE = 1;
-	private static final Logger log = LoggerFactory.getLogger(EmergencyController.class);
-
 	private final EmergencyService emergencyService;
 
-	@Transactional
 	@PostMapping("/emergency")
-	public ResponseEntity<Map<String, String>> emergencyCall(@RequestBody EmergencyRequestDTO emergencyRequestDto) {
-		Map<String, String> result = new HashMap<>();
-
+	public ResponseEntity<StatusOnlyResponse> emergencyCall(@RequestBody EmergencyRequestDTO emergencyRequestDto) {
 		// 1. 반경 [] km내의 member들만 리스트업
 		ArrayList<String> neighborMemberList
 			= emergencyService.getNeighborMembers(emergencyRequestDto, DISTANCE);
 
-		if (neighborMemberList.size() <= 0) {
-			log.info("주변 맴버 없음");
-			return addOkStatus(result);
+		if (neighborMemberList.isEmpty()) {
+			return addOkStatus();
 		}
 
 		// 2. 반경 []km 내의 member 들에게 알림을 보냄
-		if (!sendEmergencyToMembers(neighborMemberList, emergencyRequestDto)) {
-			return addErrorStatus(result);
+		if (!emergencyService.sendEmergencyToMembers(neighborMemberList, emergencyRequestDto)) {
+			return addErrorStatus();
 		}
 
-		return addOkStatus(result);
+		return addOkStatus();
 	}
 
-	@Transactional
-	public boolean sendEmergencyToMembers(ArrayList<String> neighborMemberList, EmergencyRequestDTO dto) {
-		for (String memberId : neighborMemberList) {
-			// 3. 알림을 전송 및 저장
-			Emergency emergency = emergencyService.saveEmergency(memberId, dto);
-			if (emergency == null) {
-				return false;
-			}
-
-			if (!emergencyService.sendNotificationTo(memberId, emergency)) {
-				return false;
-			}
-		}
-		return true;
+	private static ResponseEntity<StatusOnlyResponse> addOkStatus() {
+		return ResponseEntity.ok(StatusOnlyResponse.of(200));
 	}
 
-	private static ResponseEntity<Map<String, String>> addOkStatus(Map<String, String> result) {
-		result.put("status", "200");
-		return ResponseEntity.ok().body(result);
-	}
-
-	private static ResponseEntity<Map<String, String>> addErrorStatus(Map<String, String> result) {
-		result.put("status", "400");
-		return ResponseEntity.status(400).body(result);
+	private static ResponseEntity<StatusOnlyResponse> addErrorStatus() {
+		return ResponseEntity.status(BAD_REQUEST)
+			.body(StatusOnlyResponse.of(400));
 	}
 
 	@PostMapping("/sent-emergency")
@@ -89,7 +65,7 @@ public class EmergencyController {
 
 		HashMap<String, FindNotificationResponse> result = addEmergencyList(sentEmergencyList);
 		if (result == null) {
-			return ResponseEntity.status(400).body(result);
+			return ResponseEntity.status(400).body(null);
 		}
 
 		return ResponseEntity.ok().body(result);
@@ -101,42 +77,37 @@ public class EmergencyController {
 
 		HashMap<String, FindNotificationResponse> result = addEmergencyList(receivedEmergencyList);
 		if (result == null) {
-			return ResponseEntity.status(400).body(result);
+			return ResponseEntity.status(400).body(null);
 		}
 
 		return ResponseEntity.ok().body(result);
 	}
 
 	@PostMapping("/write-comment")
-	public ResponseEntity<Map<String, String>> writeComment(@RequestBody CommentRequestDTO commentRequestDTO) {
-		HashMap<String, String> result = new HashMap<>();
-
+	public ResponseEntity<StatusOnlyResponse> writeComment(@RequestBody CommentRequestDTO commentRequestDTO) {
 		if (!emergencyService.writeComment(commentRequestDTO)) {
-			return addErrorStatus(result);
+			return addErrorStatus();
 		}
 
-		return addOkStatus(result);
+		return addOkStatus();
 	}
 
 	@PostMapping("/delete-comment")
-	public ResponseEntity<Map<String, String>> deleteComment(@RequestBody CommentIdDTO dto) {
-		HashMap<String, String> result = new HashMap<>();
-
+	public ResponseEntity<StatusOnlyResponse> deleteComment(@RequestBody CommentIdDTO dto) {
 		if (!emergencyService.deleteComment(dto.getCommentId())) {
-			return addErrorStatus(result);
+			return addErrorStatus();
 		}
 
-		return addOkStatus(result);
+		return addOkStatus();
 	}
 
-	@Transactional
 	@PostMapping("/emergency-detail")
 	public ResponseEntity<Map<String, CommentResponseDTO>> emergencyDetail(@RequestBody EmergencyIdDTO dto) {
 		HashMap<String, CommentResponseDTO> result = new HashMap<>();
 
 		Emergency emergency = emergencyService.getEmergencyDetail(dto.getEmergencyId());
 		if (emergency == null) {
-			return ResponseEntity.status(400).body(result);
+			return ResponseEntity.status(400).body(null);
 		}
 
 		List<Comment> commentList = emergencyService.getCommentOfEmergency(dto.getEmergencyId());

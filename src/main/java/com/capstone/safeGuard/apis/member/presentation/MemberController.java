@@ -19,7 +19,7 @@ import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.Up
 import com.capstone.safeGuard.apis.member.presentation.request.updatecoordinate.ReturnCoordinate;
 import com.capstone.safeGuard.apis.member.presentation.request.updatecoordinate.UpdateCoordinate;
 import com.capstone.safeGuard.apis.member.presentation.response.TokenInfo;
-import com.capstone.safeGuard.apis.notice.presentation.NoticeController;
+import com.capstone.safeGuard.apis.notice.application.NoticeService;
 import com.capstone.safeGuard.domain.member.domain.Authority;
 import com.capstone.safeGuard.domain.member.domain.Child;
 import com.capstone.safeGuard.domain.member.domain.ChildBattery;
@@ -62,8 +62,8 @@ public class MemberController {
 	private final MemberService memberService;
 	private final JwtTokenProvider jwtTokenProvider;
 	private final JwtService jwtService;
-	private final NoticeController noticeController;
 	private final BatteryService batteryService;
+	private final NoticeService noticeService;
 
 	@GetMapping("/login")
 	public String showLoginForm() {
@@ -424,7 +424,7 @@ public class MemberController {
 			if (!b) {
 				return addErrorStatus(result);
 			}
-			noticeController.sendNotice(dto.id());
+			noticeService.sendNotice(dto.id());
 			return addOkStatus(result);
 		}
 		return addErrorStatus(result);
@@ -452,7 +452,7 @@ public class MemberController {
 				coordinates.put("battery", (childBattery.getBatteryValue() * 1.0));
 			}
 			if (coordinates != null) {
-				noticeController.sendNotice(dto.id());
+				noticeService.sendNotice(dto.id());
 				return ResponseEntity.ok(coordinates);
 			}
 		} else {
