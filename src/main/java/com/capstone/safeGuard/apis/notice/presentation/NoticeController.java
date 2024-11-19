@@ -3,7 +3,7 @@ package com.capstone.safeGuard.apis.notice.presentation;
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 
 import com.capstone.safeGuard.apis.general.presentation.response.StatusOnlyResponse;
-import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.GetIdDTO;
+import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.GetIdRequest;
 import com.capstone.safeGuard.apis.notice.application.NoticeService;
 import com.capstone.safeGuard.apis.notice.presentation.request.fatal.FatalRequest;
 import com.capstone.safeGuard.apis.notice.presentation.response.FindNotificationResponse;
@@ -32,7 +32,7 @@ public class NoticeController {
 	private final ChildRepository childRepository;
 
 	@PostMapping("/received-notice")
-	public ResponseEntity<Map<String, FindNotificationResponse>> receivedNotice(@RequestBody GetIdDTO dto) {
+	public ResponseEntity<Map<String, FindNotificationResponse>> receivedNotice(@RequestBody GetIdRequest dto) {
 		HashMap<String, FindNotificationResponse> result = new HashMap<>();
 
 		List<Notice> noticeList = noticeService.findNoticeByMember(dto.id());

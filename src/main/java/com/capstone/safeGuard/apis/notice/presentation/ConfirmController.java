@@ -2,7 +2,7 @@ package com.capstone.safeGuard.apis.notice.presentation;
 
 import com.capstone.safeGuard.apis.general.presentation.response.StatusOnlyResponse;
 import com.capstone.safeGuard.apis.member.application.MemberService;
-import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.GetIdDTO;
+import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.GetIdRequest;
 import com.capstone.safeGuard.apis.notice.application.ConfirmService;
 import com.capstone.safeGuard.apis.notice.presentation.request.confirm.SendConfirmRequest;
 import com.capstone.safeGuard.apis.notice.presentation.response.FindNotificationResponse;
@@ -74,7 +74,7 @@ public class ConfirmController {
 	}
 
 	@PostMapping("/received-confirm")
-	public ResponseEntity<Map<String, FindNotificationResponse>> receivedConfirm(@RequestBody GetIdDTO dto) {
+	public ResponseEntity<Map<String, FindNotificationResponse>> receivedConfirm(@RequestBody GetIdRequest dto) {
 		HashMap<String, FindNotificationResponse> result = new HashMap<>();
 
 		List<Confirm> confirmList = confirmService.findReceivedConfirmByMember(dto.id());
@@ -100,7 +100,7 @@ public class ConfirmController {
 	}
 
 	@PostMapping("/sent-confirm")
-	public ResponseEntity<Map<String, FindNotificationResponse>> sentConfirm(@RequestBody GetIdDTO dto) {
+	public ResponseEntity<Map<String, FindNotificationResponse>> sentConfirm(@RequestBody GetIdRequest dto) {
 		HashMap<String, FindNotificationResponse> result = new HashMap<>();
 
 		List<Confirm> confirmList = confirmService.findSentConfirmByMember(dto.id());

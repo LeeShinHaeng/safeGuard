@@ -3,20 +3,19 @@ package com.capstone.safeGuard.apis.member.presentation;
 import com.capstone.safeGuard.apis.member.application.BatteryService;
 import com.capstone.safeGuard.apis.member.application.JwtService;
 import com.capstone.safeGuard.apis.member.application.MemberService;
-import com.capstone.safeGuard.apis.member.presentation.request.findidandresetpw.EmailRequestDTO;
-import com.capstone.safeGuard.apis.member.presentation.request.findidandresetpw.FindMemberIdDTO;
-import com.capstone.safeGuard.apis.member.presentation.request.findidandresetpw.GetMemberIdDTO;
-import com.capstone.safeGuard.apis.member.presentation.request.findidandresetpw.ResetPasswordDTO;
-import com.capstone.safeGuard.apis.member.presentation.request.findidandresetpw.VerificationEmailDTO;
-import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.AddMemberDto;
-import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.ChildSignUpRequestDTO;
-import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.DrawDTO;
-import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.DrawHelperDTO;
-import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.GetIdDTO;
-import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.LoginRequestDTO;
-import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.SignUpRequestDTO;
-import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.UpdateMemberNameDTO;
-import com.capstone.safeGuard.apis.member.presentation.request.updatecoordinate.ReturnCoordinate;
+import com.capstone.safeGuard.apis.member.presentation.request.findidandresetpw.EmailRequest;
+import com.capstone.safeGuard.apis.member.presentation.request.findidandresetpw.FindMemberIdRequest;
+import com.capstone.safeGuard.apis.member.presentation.request.findidandresetpw.MemberIdRequest;
+import com.capstone.safeGuard.apis.member.presentation.request.findidandresetpw.ResetPasswordRequest;
+import com.capstone.safeGuard.apis.member.presentation.request.findidandresetpw.VerificationEmailRequest;
+import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.MemberRegisterRequest;
+import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.ChildRegisterRequest;
+import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.HelperRemoveRequest;
+import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.GetIdRequest;
+import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.LoginRequest;
+import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.SignUpRequest;
+import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.UpdateMemberNameRequest;
+import com.capstone.safeGuard.apis.member.presentation.request.updatecoordinate.CoordinateRequest;
 import com.capstone.safeGuard.apis.member.presentation.request.updatecoordinate.UpdateCoordinate;
 import com.capstone.safeGuard.apis.member.presentation.response.TokenInfo;
 import com.capstone.safeGuard.apis.notice.application.NoticeService;
@@ -32,6 +31,7 @@ import com.capstone.safeGuard.util.JwtTokenProvider;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -71,11 +71,11 @@ public class MemberController {
 	}
 
 	@PostMapping("/login")
-	public ResponseEntity<Map<String, String>> login(@Validated @RequestBody LoginRequestDTO dto,
+	public ResponseEntity<Map<String, String>> login(@Validated @RequestBody LoginRequest dto,
 													 BindingResult bindingResult,
 													 HttpServletResponse response,
 													 HttpServletRequest request) {
-		log.info(dto.getEditTextID(), dto.getLoginType());
+		log.info(dto.editTextID(), dto.loginType());
 
 		Map<String, String> result = new HashMap<>();
 
@@ -84,7 +84,7 @@ public class MemberController {
 		}
 
 		// Member 타입으로 로그인 하는 경우
-		if (dto.getLoginType().equals(LoginType.Member.toString())) {
+		if (dto.loginType().equals(LoginType.Member.toString())) {
 			Member memberLogin = memberService.memberLogin(dto);
 			if (memberLogin == null) {
 				return addErrorStatus(result);
@@ -127,10 +127,10 @@ public class MemberController {
 	}
 
 	@PostMapping(value = "/signup", produces = MediaType.APPLICATION_JSON_VALUE)
-	public ResponseEntity<Map<String, String>> memberSignUp(@Validated @RequestBody SignUpRequestDTO dto,
+	public ResponseEntity<Map<String, String>> memberSignUp(@Validated @RequestBody SignUpRequest dto,
 															BindingResult bindingResult) {
-		log.info(dto.getInputID());
-		log.info(dto.getInputName());
+		log.info(dto.inputID());
+		log.info(dto.inputName());
 
 		HashMap<String, String> result = new HashMap<>();
 
@@ -154,14 +154,14 @@ public class MemberController {
 	}
 
 	@PostMapping("/memberremove")
-	public ResponseEntity<?> memberRemove(@Validated @RequestBody DrawDTO dto, BindingResult bindingResult) {
+	public ResponseEntity<?> memberRemove(@Validated @RequestBody MemberIdRequest dto, BindingResult bindingResult) {
 
 		String errorMessage = memberService.validateBindingError(bindingResult);
 		if (errorMessage != null) {
 			return ResponseEntity.badRequest().body(errorMessage);
 		}
 
-		String memberId = dto.getMemberID();
+		String memberId = dto.memberId();
 
 		Boolean removeSuccess = memberService.memberRemove(memberId);
 		if (!removeSuccess) {
@@ -178,7 +178,7 @@ public class MemberController {
 	}
 
 	@PostMapping(value = "/childsignup", produces = MediaType.APPLICATION_JSON_VALUE)
-	public ResponseEntity childSignUp(@Validated @RequestBody ChildSignUpRequestDTO childDto,
+	public ResponseEntity childSignUp(@Validated @RequestBody ChildRegisterRequest childDto,
 									  BindingResult bindingResult) {
 		log.info("childSignup 실행");
 
@@ -222,14 +222,14 @@ public class MemberController {
 	}
 
 	@PostMapping("/addhelper")
-	public ResponseEntity addHelper(@Validated @RequestBody AddMemberDto addMemberDto,
+	public ResponseEntity addHelper(@Validated @RequestBody MemberRegisterRequest memberRegisterRequest,
 									BindingResult bindingResult) {
 		String errorMessage = memberService.validateBindingError(bindingResult);
 		if (errorMessage != null) {
 			return ResponseEntity.badRequest().body(errorMessage);
 		}
 
-		Boolean addSuccess = memberService.addHelper(addMemberDto);
+		Boolean addSuccess = memberService.addHelper(memberRegisterRequest);
 
 		if (!addSuccess) {
 			log.info("add Fail = {}", addSuccess);
@@ -240,7 +240,7 @@ public class MemberController {
 	}
 
 	@PostMapping("/return-nickname")
-	public ResponseEntity<String> returnNickname(@Validated @RequestBody GetIdDTO dto,
+	public ResponseEntity<String> returnNickname(@Validated @RequestBody GetIdRequest dto,
 												 BindingResult bindingResult) {
 		String errorMessage = memberService.validateBindingError(bindingResult);
 		if (errorMessage != null) {
@@ -257,7 +257,7 @@ public class MemberController {
 
 
 	@PostMapping("/helperremove")
-	public ResponseEntity helperRemove(@Validated @RequestBody DrawHelperDTO dto,
+	public ResponseEntity helperRemove(@Validated @RequestBody HelperRemoveRequest dto,
 									   BindingResult bindingResult) {
 
 		String errorMessage = memberService.validateBindingError(bindingResult);
@@ -306,7 +306,7 @@ public class MemberController {
 	}
 
 	@PostMapping("/find-member-id")
-	public ResponseEntity<Map<String, String>> findMemberId(@Validated @RequestBody FindMemberIdDTO dto,
+	public ResponseEntity<Map<String, String>> findMemberId(@Valid @RequestBody FindMemberIdRequest dto,
 															BindingResult bindingResult) {
 		Map<String, String> result = new HashMap<>();
 
@@ -328,9 +328,9 @@ public class MemberController {
 	// 비밀번호 확인을 위한 이메일 인증 1
 	// 인증번호 전송
 	@PostMapping("/verification-email-request")
-	public ResponseEntity<Map<String, String>> verificationEmailRequest(@RequestBody EmailRequestDTO dto) {
+	public ResponseEntity<Map<String, String>> verificationEmailRequest(@RequestBody EmailRequest dto) {
 		Map<String, String> result = new HashMap<>();
-		if (!memberService.sendCodeToEmail(dto.getInputId())) {
+		if (! memberService.sendCodeToEmail(dto.inputId())) {
 			// 해당 아이디가 존재하지 않음
 			return addErrorStatus(result);
 		}
@@ -340,9 +340,9 @@ public class MemberController {
 	// 비밀번호 확인을 위한 이메일 인증 2
 	// 인증번호 확인
 	@PostMapping("/verification-email")
-	public ResponseEntity<Map<String, String>> verificationEmail(@RequestBody VerificationEmailDTO dto) {
+	public ResponseEntity<Map<String, String>> verificationEmail(@RequestBody VerificationEmailRequest dto) {
 		Map<String, String> result = new HashMap<>();
-		if (!memberService.verifiedCode(dto.getInputId(), dto.getInputCode())) {
+		if (!memberService.verifiedCode(dto.inputId(), dto.inputCode())) {
 			// 코드가 틀렸다는 메시지와 함께 다시 입력하는 곳으로 리다이렉트
 			return addErrorStatus(result);
 		}
@@ -353,7 +353,7 @@ public class MemberController {
 
 	// 비밀번호 확인을 위한 이메일 인증 3
 	@PostMapping("/reset-member-password")
-	public ResponseEntity<Map<String, String>> resetMemberPassword(@RequestBody ResetPasswordDTO dto) {
+	public ResponseEntity<Map<String, String>> resetMemberPassword(@RequestBody ResetPasswordRequest dto) {
 		Map<String, String> result = new HashMap<>();
 
 		if (!memberService.resetMemberPassword(dto)) {
@@ -363,38 +363,38 @@ public class MemberController {
 	}
 
 	@PostMapping("/find-child-list")
-	public ResponseEntity<Map<String, String>> findChildNameList(@Validated @RequestBody GetMemberIdDTO dto) {
-		Map<String, String> childList = getChildList(dto.getMemberId());
+	public ResponseEntity<Map<String, String>> findChildNameList(@Validated @RequestBody MemberIdRequest dto) {
+		Map<String, String> childList = getChildList(dto.memberId());
 
 		return addOkStatus(childList);
 	}
 
 	@PostMapping("/find-parenting-helping-list")
-	public ResponseEntity<Map<String, Map<String, String>>> findParentingAndHelpingList(@Validated @RequestBody GetMemberIdDTO dto) {
+	public ResponseEntity<Map<String, Map<String, String>>> findParentingAndHelpingList(@Validated @RequestBody MemberIdRequest dto) {
 		Map<String, Map<String, String>> result = new HashMap<>();
-		result.put("Parenting", getChildList(dto.getMemberId()));
-		result.put("Helping", getHelpingList(dto.getMemberId()));
+		result.put("Parenting", getChildList(dto.memberId()));
+		result.put("Helping", getHelpingList(dto.memberId()));
 
 		return ResponseEntity.ok().body(result);
 	}
 
 	@PostMapping("/find-helping-list")
-	public ResponseEntity<Map<String, Map<String, String>>> findHelpingList(@Validated @RequestBody GetMemberIdDTO dto) {
+	public ResponseEntity<Map<String, Map<String, String>>> findHelpingList(@Validated @RequestBody MemberIdRequest dto) {
 		Map<String, Map<String, String>> result = new HashMap<>();
-		result.put("Helping", getHelpingList(dto.getMemberId()));
+		result.put("Helping", getHelpingList(dto.memberId()));
 
 		return ResponseEntity.ok().body(result);
 	}
 
 	@PostMapping("/chose-child-form")
-	public ResponseEntity<Map<String, String>> choseChildForm(@RequestBody GetMemberIdDTO dto) {
-		Map<String, String> childList = getChildList(dto.getMemberId());
+	public ResponseEntity<Map<String, String>> choseChildForm(@RequestBody MemberIdRequest dto) {
+		Map<String, String> childList = getChildList(dto.memberId());
 
 		return addOkStatus(childList);
 	}
 
 	@PostMapping("/chose-child")
-	public ResponseEntity<Map<String, String>> choseChildToChangePassword(@RequestBody ResetPasswordDTO dto) {
+	public ResponseEntity<Map<String, String>> choseChildToChangePassword(@RequestBody ResetPasswordRequest dto) {
 		Map<String, String> result = new HashMap<>();
 
 		if (!memberService.resetChildPassword(dto)) {
@@ -431,7 +431,7 @@ public class MemberController {
 	}
 
 	@PostMapping("/return-coordinate")
-	public ResponseEntity<Map<String, Double>> returnCoordinate(@RequestBody ReturnCoordinate dto) {
+	public ResponseEntity<Map<String, Double>> returnCoordinate(@RequestBody CoordinateRequest dto) {
 		Map<String, Double> coordinates;
 
 		if (dto.type().equals("Member")) {
@@ -462,7 +462,7 @@ public class MemberController {
 	}
 
 	@PostMapping("/duplicate-check-member")
-	public ResponseEntity<Map<String, String>> duplicateCheckMember(@RequestBody GetIdDTO dto) {
+	public ResponseEntity<Map<String, String>> duplicateCheckMember(@RequestBody GetIdRequest dto) {
 		Map<String, String> result = new HashMap<>();
 		if (memberService.isPresent(dto.id(), true)) {
 			return addErrorStatus(result);
@@ -472,7 +472,7 @@ public class MemberController {
 	}
 
 	@PostMapping("/duplicate-check-child")
-	public ResponseEntity<Map<String, String>> duplicateCheckChild(@RequestBody GetIdDTO dto) {
+	public ResponseEntity<Map<String, String>> duplicateCheckChild(@RequestBody GetIdRequest dto) {
 		Map<String, String> result = new HashMap<>();
 		if (memberService.isPresent(dto.id(), false)) {
 			return addErrorStatus(result);
@@ -482,15 +482,15 @@ public class MemberController {
 	}
 
 	@PostMapping("/add-parent")
-	public ResponseEntity<Map<String, String>> addParent(@RequestBody AddMemberDto dto) {
+	public ResponseEntity<Map<String, String>> addParent(@RequestBody MemberRegisterRequest dto) {
 		Map<String, String> result = new HashMap<>();
 
-		Member foundMember = memberService.findMemberById(dto.getParentId());
+		Member foundMember = memberService.findMemberById(dto.parentId());
 		if (foundMember == null) {
 			return addErrorStatus(result);
 		}
 
-		Child foundChild = memberService.findChildByChildName(dto.getChildName());
+		Child foundChild = memberService.findChildByChildName(dto.childName());
 		if (foundChild == null) {
 			return addErrorStatus(result);
 		}
@@ -504,7 +504,7 @@ public class MemberController {
 
 	@Transactional
 	@PostMapping("/find-member-by-child")
-	public ResponseEntity<Map<String, Map<String, String>>> findMemberByChild(@RequestBody GetIdDTO dto) {
+	public ResponseEntity<Map<String, Map<String, String>>> findMemberByChild(@RequestBody GetIdRequest dto) {
 		Map<String, Map<String, String>> result = new HashMap<>();
 		Child foundChild = memberService.findChildByChildName(dto.id());
 		if (foundChild == null) {
@@ -536,7 +536,7 @@ public class MemberController {
 	}
 
 	@PostMapping("/update-nickname")
-	public ResponseEntity<Map<String, String>> updateNickName(@RequestBody UpdateMemberNameDTO dto) {
+	public ResponseEntity<Map<String, String>> updateNickName(@RequestBody UpdateMemberNameRequest dto) {
 		Map<String, String> result = new HashMap<>();
 
 		if (!memberService.updateMemberName(dto)) {

@@ -1,6 +1,6 @@
 package com.capstone.safeGuard.apis.member.presentation.request.updatecoordinate;
 
-public record ReturnCoordinate(
+public record CoordinateRequest(
 	String type,
 	String id
 ) {
