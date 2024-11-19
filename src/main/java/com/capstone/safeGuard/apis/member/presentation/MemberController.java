@@ -114,10 +114,10 @@ public class MemberController {
 	}
 
 	private void storeTokenInBody(HttpServletResponse response, Map<String, String> result, TokenInfo tokenInfo) {
-		response.setHeader("Authorization", tokenInfo.getAccessToken());
+		response.setHeader("Authorization", tokenInfo.accessToken());
 		// 생성한 토큰을 저장
 		jwtService.storeToken(tokenInfo);
-		result.put("authorization", tokenInfo.getAccessToken());
+		result.put("authorization", tokenInfo.accessToken());
 		result.put("status", "200");
 	}
 

@@ -1,7 +1,7 @@
 package com.capstone.safeGuard.apis.member.application;
 
-import com.capstone.safeGuard.domain.member.domain.JwtToken;
 import com.capstone.safeGuard.apis.member.presentation.response.TokenInfo;
+import com.capstone.safeGuard.domain.member.domain.JwtToken;
 import com.capstone.safeGuard.domain.member.infrastructure.JwtTokenRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -15,37 +15,38 @@ import java.util.Optional;
 @RequiredArgsConstructor
 @Slf4j
 public class JwtService {
-    private final JwtTokenRepository jwtTokenRepository;
+	private final JwtTokenRepository jwtTokenRepository;
 
-    public void storeToken(TokenInfo tokenInfo) {
-        jwtTokenRepository.save(
-                JwtToken.builder()
-                        .grantType(tokenInfo.getGrantType())
-                        .accessToken(tokenInfo.getAccessToken())
-                        .refreshToken(tokenInfo.getRefreshToken()).build()
-        );
-    }
+	public void storeToken(TokenInfo tokenInfo) {
+		jwtTokenRepository.save(
+			JwtToken.builder()
+				.grantType(tokenInfo.grantType())
+				.accessToken(tokenInfo.accessToken())
+				.refreshToken(tokenInfo.refreshToken())
+				.build()
+		);
+	}
 
 
-    @Transactional
-    public void toBlackList(String accessToken) {
-        Optional<JwtToken> findToken = jwtTokenRepository.findByAccessToken(accessToken);
+	@Transactional
+	public void toBlackList(String accessToken) {
+		Optional<JwtToken> findToken = jwtTokenRepository.findByAccessToken(accessToken);
 
-        if (findToken.isEmpty() || findToken.get().isBlackList()) {
-            throw new NoSuchElementException("Access token does not exist");
-        }
+		if (findToken.isEmpty() || findToken.get().isBlackList()) {
+			throw new NoSuchElementException("Access token does not exist");
+		}
 
-        findToken.get().setBlackList(true);
-    }
+		findToken.get().setBlackList(true);
+	}
 
-    public JwtToken findByToken(String token) {
-        Optional<JwtToken> findToken = jwtTokenRepository.findByAccessToken(token);
+	public JwtToken findByToken(String token) {
+		Optional<JwtToken> findToken = jwtTokenRepository.findByAccessToken(token);
 
-        log.info("{}", token.equals(findToken.get().getAccessToken()));
+		log.info("{}", token.equals(findToken.get().getAccessToken()));
 
-        if (findToken.isEmpty() || findToken.get().isBlackList()) {
-            throw new NoSuchElementException();
-        }
-        return findToken.get();
-    }
+		if (findToken.isEmpty() || findToken.get().isBlackList()) {
+			throw new NoSuchElementException();
+		}
+		return findToken.get();
+	}
 }
