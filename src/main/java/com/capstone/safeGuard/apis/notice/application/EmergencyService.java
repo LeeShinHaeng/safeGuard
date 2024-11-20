@@ -57,7 +57,10 @@ public class EmergencyService {
 	public ArrayList<String> getNeighborMembers(EmergencyRequestDTO dto, int distance) {
 		ArrayList<String> memberIdList = new ArrayList<>();
 		ArrayList<Member> allMember = memberService.findAllMember();
-		Child foundChild = childRepository.findByChildName(dto.childName());
+		Child foundChild = childRepository.findByChildName(dto.childName())
+			.orElseThrow(
+				() -> new NoSuchElementException("No Such Member's child")
+			);
 
 		for (Member member : allMember) {
 			if (isNeighbor(foundChild.getLatitude(), foundChild.getLongitude(), member.getLatitude(), member.getLongitude(), distance)) {

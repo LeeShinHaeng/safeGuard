@@ -44,7 +44,8 @@ public class NoticeService {
 		}
 		notice.setNoticeLevel(noticeLevel);
 
-		Child child = childRepository.findByChildName(childName);
+		Child child = childRepository.findByChildName(childName)
+			.orElse(null);
 
 		if (child == null) {
 			log.info("createNotice childName not exist!!");
