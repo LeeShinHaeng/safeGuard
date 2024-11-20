@@ -22,7 +22,7 @@ public class FCMService {
 
     public String SendNotificationByToken(FCMNotificationDTO dto) {
         log.info("Sending notification to FCM");
-        Optional<Member> foundMember = memberRepository.findById(dto.getReceiverId());
+        Optional<Member> foundMember = memberRepository.findById(dto.receiverId());
 
         if (foundMember.isEmpty()) {
             return null;
@@ -34,8 +34,8 @@ public class FCMService {
         }
 
         Notification notification = Notification.builder()
-                .setTitle(dto.title)
-                .setBody(dto.body)
+                .setTitle(dto.title())
+                .setBody(dto.body())
                 .build();
 
         Message message = Message.builder()
