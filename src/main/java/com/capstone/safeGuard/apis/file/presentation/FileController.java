@@ -28,14 +28,8 @@ public class FileController {
 
 		if (uploaderType.equalsIgnoreCase("Member")) {
 			filePath = fileService.saveMemberFile(file, dto.uploaderId());
-			if (filePath == null || filePath.isEmpty()) {
-				return addErrorStatus();
-			}
 		} else if (uploaderType.equalsIgnoreCase("Child")) {
 			filePath = fileService.saveChildFile(file, dto.uploaderId());
-			if (filePath == null || filePath.isEmpty()) {
-				return addErrorStatus();
-			}
 		} else {
 			return addErrorStatus();
 		}
@@ -49,14 +43,8 @@ public class FileController {
 
 		if (userType.equalsIgnoreCase("Member")) {
 			filePath = fileService.findMemberFile(dto.userId());
-			if (filePath == null || filePath.isEmpty()) {
-				return addErrorStatus();
-			}
 		} else if (userType.equalsIgnoreCase("Child")) {
 			filePath = fileService.findChildFile(dto.userId());
-			if (filePath == null || filePath.isEmpty()) {
-				return addErrorStatus();
-			}
 		} else {
 			return addErrorStatus();
 		}

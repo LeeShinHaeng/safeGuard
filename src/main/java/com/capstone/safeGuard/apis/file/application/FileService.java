@@ -48,9 +48,8 @@ public class FileService {
 					.member(foundMember)
 					.build()
 			);
-
 		} catch (IOException e) {
-			return null;
+			throw new RuntimeException(e);
 		}
 		return fileName;
 	}
@@ -86,7 +85,7 @@ public class FileService {
 			);
 
 		} catch (IOException e) {
-			return null;
+			throw new RuntimeException(e);
 		}
 		return fileName;
 	}
@@ -102,7 +101,8 @@ public class FileService {
 			.orElseThrow(() -> new RuntimeException("No Such Child"));
 
 		Optional<MemberFile> foundFile = memberFileRepository.findByMember(foundMember);
-		return foundFile.map(MemberFile::getFileName).orElse(null);
+		return foundFile.map(MemberFile::getFileName)
+			.orElseThrow(() -> new RuntimeException("No Such File"));
 	}
 
 	@Transactional
@@ -111,6 +111,7 @@ public class FileService {
 			.orElseThrow(() -> new RuntimeException("No Such Child"));
 
 		Optional<ChildFile> foundFile = childFileRepository.findByChild(foundChild);
-		return foundFile.map(ChildFile::getFileName).orElse(null);
+		return foundFile.map(ChildFile::getFileName)
+			.orElseThrow(() -> new RuntimeException("No Such File"));
 	}
 }
