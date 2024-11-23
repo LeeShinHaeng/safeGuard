@@ -59,15 +59,11 @@ public class ConfirmController {
 			return addErrorStatus();
 		}
 
-		boolean isSent = false;
 		for (Helping helping : childHelpingList) {
 			if (helping.getHelper().equals(foundSender.get())) {
 				// helper가 존재하면 confirm 전송
-				isSent = confirmService.sendConfirmToAllMember(foundMemberList, foundChild, helping, dto.confirmType());
+				confirmService.sendConfirmToAllMember(foundMemberList, foundChild, helping, dto.confirmType());
 			}
-		}
-		if (!isSent) {
-			return addErrorStatus();
 		}
 
 		return addOkStatus();

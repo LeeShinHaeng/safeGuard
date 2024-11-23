@@ -5,9 +5,8 @@ import com.capstone.safeGuard.apis.notice.presentation.request.notification.FCMN
 import com.capstone.safeGuard.domain.map.domain.Coordinate;
 import com.capstone.safeGuard.domain.map.infrastructure.CoordinateRepository;
 import com.capstone.safeGuard.domain.member.domain.Child;
+import com.capstone.safeGuard.domain.member.domain.Member;
 import com.capstone.safeGuard.domain.member.domain.Parenting;
-import com.capstone.safeGuard.domain.member.infrastructure.ChildRepository;
-import com.capstone.safeGuard.domain.member.infrastructure.MemberRepository;
 import com.capstone.safeGuard.domain.notice.domain.Notice;
 import com.capstone.safeGuard.domain.notice.domain.NoticeLevel;
 import com.capstone.safeGuard.domain.notice.infrastructure.NoticeRepository;
@@ -25,47 +24,28 @@ import java.util.List;
 @Slf4j
 public class NoticeService {
 	private final NoticeRepository noticeRepository;
-	private final MemberRepository memberRepository;
-	private final ChildRepository childRepository;
 	private final FCMService fcmService;
 	private final MemberService memberService;
 	private final CoordinateRepository coordinateRepository;
 
 	@Transactional
 	public Notice createNotice(String receiverId, String childName, NoticeLevel noticeLevel) {
+		Member member = memberService.findMemberById(receiverId);
+
 		Notice notice = new Notice();
 		notice.setTitle(noticeLevel.name());
 		notice.setContent("피보호자 이름 : " + childName);
-		notice.setReceiverId(receiverId);
-
-		if (!memberRepository.existsByMemberId(receiverId)) {
-			log.info("createNotice memberId not exist!!");
-			return null;
-		}
+		notice.setReceiverId(member.getMemberId());
 		notice.setNoticeLevel(noticeLevel);
-
-		Child child = childRepository.findByChildName(childName)
-			.orElse(null);
-
-		if (child == null) {
-			log.info("createNotice childName not exist!!");
-			return null;
-		}
-		notice.setChild(child);
+		notice.setChild(memberService.findChildByChildName(childName));
 		notice.setCreatedAt(LocalDateTime.now());
 
-		noticeRepository.save(notice);
-
-		return notice;
+		return noticeRepository.save(notice);
 	}
 
 	@Transactional
 	public void sendNotice(String childName) {
 		Child foundChild = memberService.findChildByChildName(childName);
-		if (foundChild == null) {
-			log.warn("에러 : foundChild is null!!");
-			return;
-		}
 
 		String currentStatus = getCurrentStatus(foundChild);
 		String lastStatus = "일반구역";
@@ -80,19 +60,13 @@ public class NoticeService {
 		List<Parenting> childParentingList = foundChild.getParentingList();
 		// 구역 변경 시 FCM 메시지 전송
 		if (currentStatus.equals("위험구역") && (!lastStatus.equals("위험구역"))) {
-			if (!sendNoticeToMember(childParentingList, foundChild.getChildName(), NoticeLevel.WARN)) {
-				log.warn("에러 : 전송 실패");
-				return;
-			}
+			sendNoticeToMember(childParentingList, foundChild.getChildName(), NoticeLevel.WARN);
 			// 마지막 상태 갱신
 			foundChild.setLastStatus(currentStatus);
 			log.warn("warn 전송 완료");
 		} //else if ( lastStatus.equals("위험구역") && (currentStatus.equals("일반구역") || currentStatus.equals("안전구역")) ) {
 		else if (!lastStatus.equals(currentStatus)) {
-			if (!sendNoticeToMember(childParentingList, foundChild.getChildName(), NoticeLevel.INFO)) {
-				log.warn("에러 : 전송 실패");
-				return;
-			}
+			sendNoticeToMember(childParentingList, foundChild.getChildName(), NoticeLevel.INFO);
 			// 마지막 상태 갱신
 			foundChild.setLastStatus(currentStatus);
 			log.warn("info 전송 완료");
@@ -127,20 +101,17 @@ public class NoticeService {
 	}
 
 	@Transactional
-	public boolean sendNoticeToMember(List<Parenting> parentingList, String childName, NoticeLevel noticeLevel) {
+	public void sendNoticeToMember(List<Parenting> parentingList, String childName, NoticeLevel noticeLevel) {
 		for (Parenting parenting : parentingList) {
 			Notice notice = createNotice(
 				parenting.getParent().getMemberId(),
 				childName,
-				noticeLevel);
-			if (notice == null) {
-				log.info("No such notice");
-				return false;
+				noticeLevel
+			);
+			if (sendNotificationTo(notice)) {
+				throw new RuntimeException("Send Notice Failed");
 			}
-			return sendNotificationTo(notice);
 		}
-
-		return true;
 	}
 
 	public static boolean isPointInPolygon(double[][] polygon, double[] point) {
@@ -163,7 +134,7 @@ public class NoticeService {
 
 	public boolean sendNotificationTo(Notice notice) {
 		FCMNotificationDTO message = makeMessage(notice);
-		return fcmService.SendNotificationByToken(message) != null;
+		return fcmService.SendNotificationByToken(message);
 	}
 
 	private FCMNotificationDTO makeMessage(Notice notice) {
@@ -184,16 +155,8 @@ public class NoticeService {
 	}
 
 	public List<Notice> findNoticeByMember(String memberId) {
-		if (memberService.findMemberById(memberId) == null) {
-			log.info("No such member!!");
-			return null;
-		}
+		memberService.findMemberById(memberId);
 
-		List<Notice> foundNoticeList = noticeRepository.findAllByReceiverId(memberId);
-		if (foundNoticeList.isEmpty()) {
-			log.info("Notice doesn't exist!!");
-			return null;
-		}
-		return foundNoticeList;
+		return noticeRepository.findAllByReceiverId(memberId);
 	}
 }

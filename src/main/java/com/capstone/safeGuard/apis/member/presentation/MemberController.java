@@ -8,11 +8,11 @@ import com.capstone.safeGuard.apis.member.presentation.request.findidandresetpw.
 import com.capstone.safeGuard.apis.member.presentation.request.findidandresetpw.MemberIdRequest;
 import com.capstone.safeGuard.apis.member.presentation.request.findidandresetpw.ResetPasswordRequest;
 import com.capstone.safeGuard.apis.member.presentation.request.findidandresetpw.VerificationEmailRequest;
-import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.MemberRegisterRequest;
 import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.ChildRegisterRequest;
-import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.HelperRemoveRequest;
 import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.GetIdRequest;
+import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.HelperRemoveRequest;
 import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.LoginRequest;
+import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.MemberRegisterRequest;
 import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.SignUpRequest;
 import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.UpdateMemberNameRequest;
 import com.capstone.safeGuard.apis.member.presentation.request.updatecoordinate.CoordinateRequest;
@@ -178,8 +178,8 @@ public class MemberController {
 	}
 
 	@PostMapping(value = "/childsignup", produces = MediaType.APPLICATION_JSON_VALUE)
-	public ResponseEntity childSignUp(@Validated @RequestBody ChildRegisterRequest childDto,
-									  BindingResult bindingResult) {
+	public ResponseEntity<String> childSignUp(@Validated @RequestBody ChildRegisterRequest childDto,
+											  BindingResult bindingResult) {
 		log.info("childSignup 실행");
 
 		String errorMessage = memberService.validateBindingError(bindingResult);
@@ -202,7 +202,7 @@ public class MemberController {
 	}
 
 	@PostMapping("/childremove")
-	public ResponseEntity childRemove(@Validated @RequestBody Map<String, String> requestBody,
+	public ResponseEntity<String> childRemove(@Validated @RequestBody Map<String, String> requestBody,
 									  BindingResult bindingResult) {
 
 		String errorMessage = memberService.validateBindingError(bindingResult);
@@ -222,7 +222,7 @@ public class MemberController {
 	}
 
 	@PostMapping("/addhelper")
-	public ResponseEntity addHelper(@Validated @RequestBody MemberRegisterRequest memberRegisterRequest,
+	public ResponseEntity<String> addHelper(@Validated @RequestBody MemberRegisterRequest memberRegisterRequest,
 									BindingResult bindingResult) {
 		String errorMessage = memberService.validateBindingError(bindingResult);
 		if (errorMessage != null) {
@@ -257,7 +257,7 @@ public class MemberController {
 
 
 	@PostMapping("/helperremove")
-	public ResponseEntity helperRemove(@Validated @RequestBody HelperRemoveRequest dto,
+	public ResponseEntity<String> helperRemove(@Validated @RequestBody HelperRemoveRequest dto,
 									   BindingResult bindingResult) {
 
 		String errorMessage = memberService.validateBindingError(bindingResult);
@@ -330,7 +330,7 @@ public class MemberController {
 	@PostMapping("/verification-email-request")
 	public ResponseEntity<Map<String, String>> verificationEmailRequest(@RequestBody EmailRequest dto) {
 		Map<String, String> result = new HashMap<>();
-		if (! memberService.sendCodeToEmail(dto.inputId())) {
+		if (!memberService.sendCodeToEmail(dto.inputId())) {
 			// 해당 아이디가 존재하지 않음
 			return addErrorStatus(result);
 		}
@@ -365,7 +365,6 @@ public class MemberController {
 	@PostMapping("/find-child-list")
 	public ResponseEntity<Map<String, String>> findChildNameList(@Validated @RequestBody MemberIdRequest dto) {
 		Map<String, String> childList = getChildList(dto.memberId());
-
 		return addOkStatus(childList);
 	}
 
@@ -486,9 +485,6 @@ public class MemberController {
 		Map<String, String> result = new HashMap<>();
 
 		Member foundMember = memberService.findMemberById(dto.parentId());
-		if (foundMember == null) {
-			return addErrorStatus(result);
-		}
 
 		Child foundChild = memberService.findChildByChildName(dto.childName());
 		if (foundChild == null) {

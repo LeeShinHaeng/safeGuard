@@ -73,7 +73,6 @@ public class MemberService {
 	private static final int emailAuthCodeDuration = 1800; // 30 * 60 * 1000 == 30분
 	private final ConfirmRepository confirmRepository;
 	private final CommentRepository commentRepository;
-	private final BatteryService batteryService;
 	private final MemberBatteryRepository memberBatteryRepository;
 	private final ChildBatteryRepository childBatteryRepository;
 	private final EmergencyRepository emergencyRepository;
@@ -414,41 +413,6 @@ public class MemberService {
 		return foundMember.getMemberId();
 	}
 
-	public String findChildNamesByParentId(String parentId) {
-		Optional<Member> foundParent = memberRepository.findById(parentId);
-		if (foundParent.isEmpty()) {
-			return null;
-		}
-
-		List<Parenting> parentingList = foundParent.get().getParentingList();
-		if (parentingList.isEmpty()) {
-			return null;
-		}
-
-		return childNamesBuilder(parentingList);
-	}
-
-	private String childNamesBuilder(List<Parenting> parentingList) {
-		StringBuilder childNames = new StringBuilder();
-		int index = 0;
-
-		childNames.append("{");
-		for (Parenting parenting : parentingList) {
-			childNames.append("\"ChildName")
-				.append(index + 1)
-				.append("\" : \"")
-				.append(parenting.getChild().getChildName())
-				.append("\"");
-
-			if (index < parentingList.size() - 1) {
-				childNames.append(",");
-			}
-		}
-		childNames.append("}");
-
-		return childNames.toString();
-	}
-
 	public boolean sendCodeToEmail(String memberId) {
 		Optional<Member> foundMember = memberRepository.findById(memberId);
 		if (foundMember.isEmpty()) {
@@ -461,9 +425,7 @@ public class MemberService {
 
 		mailService.sendEmail(address, title, authCode);
 		Optional<EmailAuthCode> foundCode = emailAuthCodeRepository.findById(memberId);
-		if (foundCode.isPresent()) {
-			emailAuthCodeRepository.delete(foundCode.get());
-		}
+		foundCode.ifPresent(emailAuthCodeRepository::delete);
 		emailAuthCodeRepository.save(new EmailAuthCode(address, authCode, LocalDateTime.now()));
 		return true;
 	}
@@ -611,8 +573,7 @@ public class MemberService {
 		if (flag) {
 			return memberRepository.findById(id).isPresent();
 		}
-
-		return childRepository.findBychildName(id) != null;
+		return childRepository.findBychildName(id).isPresent();
 	}
 
 	@Transactional
@@ -643,7 +604,8 @@ public class MemberService {
 	}
 
 	public Member findMemberById(String memberId) {
-		return memberRepository.findById(memberId).orElse(null);
+		return memberRepository.findById(memberId)
+			.orElseThrow(() -> new RuntimeException("Member not found"));
 	}
 
 	@Transactional
@@ -688,9 +650,6 @@ public class MemberService {
 	@Transactional
 	public boolean updateMemberName(UpdateMemberNameRequest dto) {
 		Member foundMember = findMemberById(dto.userID());
-		if (foundMember == null) {
-			return false;
-		}
 
 		foundMember.setName(dto.nickname());
 		return true;
@@ -698,9 +657,6 @@ public class MemberService {
 
 	public String getNicknameById(String memberId) {
 		Optional<Member> foundMember = memberRepository.findById(memberId);
-		if (foundMember.isEmpty()) {
-			return null;
-		}
-		return foundMember.get().getName();
+		return foundMember.map(Member::getName).orElse(null);
 	}
 }
