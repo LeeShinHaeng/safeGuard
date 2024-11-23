@@ -119,7 +119,7 @@ public class MemberService {
 	}
 
 	public Child childLogin(LoginRequest dto) {
-		Optional<Child> findChild = Optional.ofNullable(childRepository.findBychildName(dto.editTextID()));
+		Optional<Child> findChild = childRepository.findBychildName(dto.editTextID());
 
 		return findChild
 			.map(child -> findChildWithAuthenticate(child, dto.editTextPW()))
@@ -165,7 +165,7 @@ public class MemberService {
 
 	@Transactional
 	public Boolean childSignUp(ChildRegisterRequest childDto) {
-		Optional<Child> findChild = Optional.ofNullable(childRepository.findBychildName(childDto.childName()));
+		Optional<Child> findChild = childRepository.findBychildName(childDto.childName());
 		if (findChild.isPresent()) {
 			return false;
 		}
@@ -217,7 +217,8 @@ public class MemberService {
 		String childName = memberRegisterRequest.childName();
 		String memberId = memberRegisterRequest.parentId();
 
-		Child selectedChild = childRepository.findBychildName(childName);
+		Child selectedChild = childRepository.findBychildName(childName)
+			.orElse(null);
 		if (selectedChild == null) {
 			return false;
 		}
@@ -299,7 +300,8 @@ public class MemberService {
 
 	@Transactional
 	public Boolean childRemove(String childName) {
-		Child selectedChild = childRepository.findBychildName(childName);
+		Child selectedChild = childRepository.findBychildName(childName)
+			.orElse(null);
 		if (selectedChild == null) {
 			return false;
 		}
@@ -531,7 +533,8 @@ public class MemberService {
 
 	@Transactional
 	public boolean resetChildPassword(ResetPasswordRequest dto) {
-		Child foundChild = childRepository.findBychildName(dto.id());
+		Child foundChild = childRepository.findBychildName(dto.id())
+			.orElse(null);
 
 		if (foundChild == null) {
 			return false;
@@ -561,7 +564,8 @@ public class MemberService {
 	// 해당 메소드에서 id는 child의 name이다.
 	@Transactional
 	public boolean updateChildCoordinate(String id, double latitude, double longitude) {
-		Child foundChild = childRepository.findBychildName(id);
+		Child foundChild = childRepository.findBychildName(id)
+			.orElse(null);
 		if (foundChild == null) {
 			return false;
 		}
@@ -589,7 +593,8 @@ public class MemberService {
 
 	@Transactional
 	public Map<String, Double> getChildCoordinate(String id) {
-		Child foundChild = childRepository.findBychildName(id);
+		Child foundChild = childRepository.findBychildName(id)
+			.orElse(null);
 		if (foundChild == null) {
 			return null;
 		}
@@ -612,7 +617,8 @@ public class MemberService {
 
 	@Transactional
 	public Child findChildByChildName(String childName) {
-		return childRepository.findBychildName(childName);
+		return childRepository.findBychildName(childName)
+			.orElse(null);
 	}
 
 
@@ -647,7 +653,8 @@ public class MemberService {
 			return false;
 		}
 
-		Child foundChild = childRepository.findBychildName(childName);
+		Child foundChild = childRepository.findBychildName(childName)
+			.orElse(null);
 		if (foundChild == null) {
 			return false;
 		}

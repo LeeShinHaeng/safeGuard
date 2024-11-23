@@ -94,7 +94,8 @@ public class EmergencyService {
 	public Emergency saveEmergency(String receiverId, EmergencyRequestDTO dto) {
 		// Emergency table에 저장
 		Member member = memberRepository.findById(dto.senderId()).orElseThrow(NoSuchElementException::new);
-		Child child = childRepository.findBychildName(dto.childName());
+		Child child = childRepository.findBychildName(dto.childName())
+			.orElseThrow(NoSuchElementException::new);
 		String content = "피보호자 이름 : " + dto.childName();
 
 		Emergency emergency = dto.dtoToDomain(member, child, content);
