@@ -19,7 +19,6 @@ import com.capstone.safeGuard.apis.member.presentation.request.updatecoordinate.
 import com.capstone.safeGuard.apis.member.presentation.request.updatecoordinate.UpdateCoordinate;
 import com.capstone.safeGuard.apis.member.presentation.response.TokenInfo;
 import com.capstone.safeGuard.apis.notice.application.NoticeService;
-import com.capstone.safeGuard.domain.member.domain.Authority;
 import com.capstone.safeGuard.domain.member.domain.Child;
 import com.capstone.safeGuard.domain.member.domain.ChildBattery;
 import com.capstone.safeGuard.domain.member.domain.Helping;
@@ -27,7 +26,6 @@ import com.capstone.safeGuard.domain.member.domain.LoginType;
 import com.capstone.safeGuard.domain.member.domain.Member;
 import com.capstone.safeGuard.domain.member.domain.MemberBattery;
 import com.capstone.safeGuard.domain.member.domain.Parenting;
-import com.capstone.safeGuard.util.JwtTokenProvider;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
@@ -37,9 +35,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.annotation.Validated;
@@ -49,7 +44,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -60,7 +54,6 @@ import java.util.NoSuchElementException;
 @Slf4j
 public class MemberController {
 	private final MemberService memberService;
-	private final JwtTokenProvider jwtTokenProvider;
 	private final JwtService jwtService;
 	private final BatteryService batteryService;
 	private final NoticeService noticeService;
@@ -86,24 +79,18 @@ public class MemberController {
 		// Member 타입으로 로그인 하는 경우
 		if (dto.loginType().equals(LoginType.Member.toString())) {
 			Member memberLogin = memberService.memberLogin(dto);
-			if (memberLogin == null) {
-				return addErrorStatus(result);
-			}
 
 			// member가 존재하는 경우 token을 전달
-			TokenInfo tokenInfo = generateTokenOfMember(memberLogin);
+			TokenInfo tokenInfo = memberService.generateTokenOfMember(memberLogin);
 			storeTokenInBody(response, result, tokenInfo);
 			result.put("Type", "Member");
 		}
 		// Child 타입으로 로그인 하는 경우
 		else {
 			Child childLogin = memberService.childLogin(dto);
-			if (childLogin == null) {
-				return addErrorStatus(result);
-			}
 
 			// child가 존재하는 경우 token을 전달
-			TokenInfo tokenInfo = generateTokenOfChild(childLogin);
+			TokenInfo tokenInfo = memberService.generateTokenOfChild(childLogin);
 			storeTokenInBody(response, result, tokenInfo);
 
 			HttpSession session = request.getSession();
@@ -139,12 +126,7 @@ public class MemberController {
 			return addErrorStatus(result);
 		}
 
-		Boolean signUpSuccess = memberService.signup(dto);
-		if (!signUpSuccess) {
-			log.info("signupFail = {}", signUpSuccess);
-			return addErrorStatus(result);
-		}
-		log.info("signup success = {}", signUpSuccess);
+		memberService.signup(dto);
 		return addOkStatus(result);
 	}
 
@@ -187,12 +169,7 @@ public class MemberController {
 			return ResponseEntity.badRequest().body(errorMessage);
 		}
 
-		Boolean signUpSuccess = memberService.childSignUp(childDto);
-		if (!signUpSuccess) {
-			log.info("signupFail = {}", signUpSuccess);
-			return ResponseEntity.status(400).build();
-		}
-		log.info("signup success = {}", signUpSuccess);
+		memberService.childSignUp(childDto);
 		return ResponseEntity.ok().build();
 	}
 
@@ -575,20 +552,5 @@ public class MemberController {
 	private static ResponseEntity<Map<String, String>> addBindingError(Map<String, String> result) {
 		result.put("status", "403");
 		return ResponseEntity.status(403).body(result);
-	}
-
-	public TokenInfo generateTokenOfMember(Member member) {
-		Authentication authentication
-			= new UsernamePasswordAuthenticationToken(member.getMemberId(), member.getPassword(),
-			Collections.singleton(new SimpleGrantedAuthority(Authority.ROLE_MEMBER.toString())));
-		return jwtTokenProvider.generateToken(authentication);
-	}
-
-
-	public TokenInfo generateTokenOfChild(Child child) {
-		Authentication authentication
-			= new UsernamePasswordAuthenticationToken(child.getChildName(), child.getChildPassword(),
-			Collections.singleton(new SimpleGrantedAuthority(Authority.ROLE_CHILD.toString())));
-		return jwtTokenProvider.generateToken(authentication);
 	}
 }

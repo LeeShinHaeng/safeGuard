@@ -8,6 +8,7 @@ import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.Lo
 import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.MemberRegisterRequest;
 import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.SignUpRequest;
 import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.UpdateMemberNameRequest;
+import com.capstone.safeGuard.apis.member.presentation.response.TokenInfo;
 import com.capstone.safeGuard.domain.comment.domain.Comment;
 import com.capstone.safeGuard.domain.comment.infrastructure.CommentRepository;
 import com.capstone.safeGuard.domain.file.infrastructure.ChildFileRepository;
@@ -37,8 +38,12 @@ import com.capstone.safeGuard.domain.notice.infrastructure.ConfirmRepository;
 import com.capstone.safeGuard.domain.notice.infrastructure.EmergencyReceiverRepository;
 import com.capstone.safeGuard.domain.notice.infrastructure.EmergencyRepository;
 import com.capstone.safeGuard.domain.notice.infrastructure.NoticeRepository;
+import com.capstone.safeGuard.util.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,6 +53,7 @@ import org.springframework.validation.FieldError;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -59,7 +65,6 @@ import java.util.Random;
 @RequiredArgsConstructor
 @Slf4j
 public class MemberService {
-
 	private final MemberRepository memberRepository;
 	private final ChildRepository childRepository;
 	private final ParentingRepository parentingRepository;
@@ -80,81 +85,67 @@ public class MemberService {
 	private final ChildFileRepository childFileRepository;
 	private final EmergencyReceiverRepository emergencyReceiverRepository;
 	private final NoticeRepository noticeRepository;
+	private final JwtTokenProvider jwtTokenProvider;
 
 	@Transactional
 	public Member memberLogin(LoginRequest dto) {
 		// 존재하는 멤버인가
-		Optional<Member> foundMember = memberRepository.findById(dto.editTextID());
-		if (foundMember.isEmpty()) {
-			return null;
-		}
+		Member member = memberRepository.findById(dto.editTextID())
+			.orElseThrow(() -> new RuntimeException("Member not found"));
 
 		// ID와 PW가 일치하는가
-		Member member = findMemberWithAuthenticate(foundMember.get(), dto.editTextPW());
-		if (member == null) {
-			return null;
-		}
+		findMemberWithAuthenticate(member, dto.editTextPW());
 
+		// 같은 기기를 사용하는 멤버 모두 FCM 토큰 초기화
 		String fcmToken = dto.fcmToken();
-
 		List<Member> existFcmList = memberRepository.findAllByFcmToken(fcmToken);
 		if (!existFcmList.isEmpty()) {
 			for (Member existFcm : existFcmList) {
 				existFcm.setFcmToken(null);
 			}
 		}
-
 		member.setFcmToken(fcmToken);
 
 		return member;
 	}
 
-	public Member findMemberWithAuthenticate(Member findMember, String rawPassword) {
-		if (passwordEncoder.matches(rawPassword, findMember.getPassword())) {
-			return findMember;
+	public void findMemberWithAuthenticate(Member foundMember, String rawPassword) {
+		if (passwordEncoder.matches(rawPassword, foundMember.getPassword())) {
+			return;
 		}
-		return null;
+		throw new RuntimeException("Password not match");
 	}
 
 	public Child childLogin(LoginRequest dto) {
-		Optional<Child> findChild = childRepository.findBychildName(dto.editTextID());
+		Child child = childRepository.findBychildName(dto.editTextID())
+			.orElseThrow(() -> new RuntimeException("Child not found"));
 
-		return findChild
-			.map(child -> findChildWithAuthenticate(child, dto.editTextPW()))
-			.orElse(null);
+		findChildWithAuthenticate(child, dto.editTextPW());
 
+		return child;
 	}
 
-	private Child findChildWithAuthenticate(Child findChild, String rawPassword) {
-		if (passwordEncoder.matches(rawPassword, findChild.getChildPassword())) {
-			return findChild;
+	private void findChildWithAuthenticate(Child foundChild, String rawPassword) {
+		if (passwordEncoder.matches(rawPassword, foundChild.getChildPassword())) {
+			return;
 		}
-		return null;
+		throw new RuntimeException("Password not match");
 	}
 
-	public Boolean signup(SignUpRequest dto) {
-		Optional<Member> findMember = memberRepository.findById(dto.inputID());
-		if (findMember.isPresent()) {
-			return false;
+	public void signup(SignUpRequest dto) {
+		if (memberRepository.existsById(dto.inputID())) {
+			throw new RuntimeException("Member already exists");
 		}
 
 		String email = dto.inputEmail();
 		if (checkEmailDuplicate(email)) {
 			log.info("Email Duplicate");
-			return false;
+			throw new RuntimeException("Email Duplicate");
 		}
 
-		Member member = new Member();
-		member.setMemberId(dto.inputID());
-		member.setEmail(dto.inputEmail());
-		member.setName(dto.inputName());
-		String encodedPassword = passwordEncoder.encode(dto.inputPW());
-		member.setPassword(encodedPassword);
-		member.setAuthority(Authority.ROLE_MEMBER);
-		member.setFcmToken(dto.fcmToken());
+		String encoded = passwordEncoder.encode(dto.inputPW());
+		Member member = Member.of(dto, encoded);
 		memberRepository.save(member);
-
-		return true;
 	}
 
 	public boolean checkEmailDuplicate(String email) {
@@ -162,48 +153,31 @@ public class MemberService {
 	}
 
 	@Transactional
-	public Boolean childSignUp(ChildRegisterRequest childDto) {
-		Optional<Child> findChild = childRepository.findBychildName(childDto.childName());
-		if (findChild.isPresent()) {
-			return false;
+	public void childSignUp(ChildRegisterRequest childDto) {
+		if (childRepository.existsByChildName(childDto.childName())) {
+			throw new RuntimeException("Child already exists");
 		}
-		log.info(childDto.memberId());
-		log.info(childDto.childName());
-		log.info(childDto.childPassword());
 
-		Child child = new Child();
-		child.setChildName(childDto.childName());
-		String encodedPassword = passwordEncoder.encode(childDto.childPassword());
-		child.setChildPassword(encodedPassword);
-		child.setAuthority(Authority.ROLE_CHILD);
-		child.setLastStatus("일반구역");
+		Child child = Child.of(childDto, passwordEncoder.encode(childDto.childPassword()));
 		childRepository.save(child);
 
 		// member child 연결
 		String memberId = childDto.memberId();
-		Optional<Member> findMember = memberRepository.findById(memberId);
-		if (findMember.isEmpty()) {
-			return false;
-		}
-		saveParenting(memberId, child);
+		Member member = memberRepository.findById(memberId)
+			.orElseThrow(() -> new RuntimeException("Member not found"));
 
-		return true;
+		saveParenting(member, child);
 	}
 
 	@Transactional
-	public void saveParenting(String memberId, Child child) {
-		// 부모와 자식 엔티티의 ID를 사용하여 엔티티 객체를 가져옴
-		Optional<Member> parent = memberRepository.findById(memberId);
-
-		if (parent.isEmpty() || child == null) {
-			// 부모나 자식이 존재하지 않는 경우 처리
-			return;
-		}
-
+	public void saveParenting(Member parent, Child child) {
 		// Parenting 엔티티 생성
 		Parenting parenting = new Parenting();
-		parenting.setParent(parent.get());
+		parenting.setParent(parent);
 		parenting.setChild(child);
+
+		parent.getParentingList().add(parenting);
+		child.getParentingList().add(parenting);
 
 		// Parenting 엔티티 저장
 		parentingRepository.save(parenting);
@@ -617,7 +591,7 @@ public class MemberService {
 			}
 		}
 
-		saveParenting(memberId, foundChild);
+		saveParenting(foundMember.get(), foundChild);
 
 		return true;
 	}
@@ -647,5 +621,19 @@ public class MemberService {
 	public String getNicknameById(String memberId) {
 		Optional<Member> foundMember = memberRepository.findById(memberId);
 		return foundMember.map(Member::getName).orElse(null);
+	}
+
+	public TokenInfo generateTokenOfMember(Member member) {
+		Authentication authentication
+			= new UsernamePasswordAuthenticationToken(member.getMemberId(), member.getPassword(),
+			Collections.singleton(new SimpleGrantedAuthority(Authority.ROLE_MEMBER.toString())));
+		return jwtTokenProvider.generateToken(authentication);
+	}
+
+	public TokenInfo generateTokenOfChild(Child child) {
+		Authentication authentication
+			= new UsernamePasswordAuthenticationToken(child.getChildName(), child.getChildPassword(),
+			Collections.singleton(new SimpleGrantedAuthority(Authority.ROLE_CHILD.toString())));
+		return jwtTokenProvider.generateToken(authentication);
 	}
 }
