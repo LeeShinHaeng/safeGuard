@@ -51,7 +51,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Random;
@@ -366,11 +365,7 @@ public class MemberService {
 	}
 
 	public boolean logout(String accessToken) {
-		try {
-			jwtService.toBlackList(accessToken);
-		} catch (NoSuchElementException e) {
-			return false;
-		}
+		jwtService.toBlackList(accessToken);
 		return true;
 	}
 

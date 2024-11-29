@@ -294,11 +294,9 @@ public class MemberController {
 	public ResponseEntity<Map<String, String>> logout(HttpServletRequest request) {
 		Map<String, String> result = new HashMap<>();
 		String requestToken = request.getHeader("Authorization");
-		try {
-			jwtService.findByToken(requestToken);
-		} catch (Exception e) {
-			return addErrorStatus(result);
-		}
+
+		jwtService.findByToken(requestToken);
+
 		if (memberService.logout(requestToken)) {
 			return addOkStatus(result);
 		}

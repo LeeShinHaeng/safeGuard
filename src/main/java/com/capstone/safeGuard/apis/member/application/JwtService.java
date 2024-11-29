@@ -8,9 +8,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.NoSuchElementException;
-import java.util.Optional;
-
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -27,26 +24,23 @@ public class JwtService {
 		);
 	}
 
-
 	@Transactional
 	public void toBlackList(String accessToken) {
-		Optional<JwtToken> findToken = jwtTokenRepository.findByAccessToken(accessToken);
+		JwtToken findToken = jwtTokenRepository.findByAccessToken(accessToken)
+			.orElseThrow(() -> new RuntimeException("Token not found"));
 
-		if (findToken.isEmpty() || findToken.get().isBlackList()) {
-			throw new NoSuchElementException("Access token does not exist");
-		}
-
-		findToken.get().setBlackList(true);
+		findToken.setBlackList(true);
 	}
 
 	public JwtToken findByToken(String token) {
-		Optional<JwtToken> findToken = jwtTokenRepository.findByAccessToken(token);
+		JwtToken foundToken = jwtTokenRepository.findByAccessToken(token)
+			.orElseThrow(() -> new RuntimeException("Token not found"));
 
-		log.info("{}", token.equals(findToken.get().getAccessToken()));
+		log.info("{}", token.equals(foundToken.getAccessToken()));
 
-		if (findToken.isEmpty() || findToken.get().isBlackList()) {
-			throw new NoSuchElementException();
+		if (foundToken.isBlackList()) {
+			throw new RuntimeException("Token not found");
 		}
-		return findToken.get();
+		return foundToken;
 	}
 }
