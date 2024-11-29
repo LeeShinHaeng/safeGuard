@@ -203,7 +203,7 @@ public class MemberController {
 
 	@PostMapping("/childremove")
 	public ResponseEntity<String> childRemove(@Validated @RequestBody Map<String, String> requestBody,
-									  BindingResult bindingResult) {
+											  BindingResult bindingResult) {
 
 		String errorMessage = memberService.validateBindingError(bindingResult);
 		if (errorMessage != null) {
@@ -223,7 +223,7 @@ public class MemberController {
 
 	@PostMapping("/addhelper")
 	public ResponseEntity<String> addHelper(@Validated @RequestBody MemberRegisterRequest memberRegisterRequest,
-									BindingResult bindingResult) {
+											BindingResult bindingResult) {
 		String errorMessage = memberService.validateBindingError(bindingResult);
 		if (errorMessage != null) {
 			return ResponseEntity.badRequest().body(errorMessage);
@@ -258,7 +258,7 @@ public class MemberController {
 
 	@PostMapping("/helperremove")
 	public ResponseEntity<String> helperRemove(@Validated @RequestBody HelperRemoveRequest dto,
-									   BindingResult bindingResult) {
+											   BindingResult bindingResult) {
 
 		String errorMessage = memberService.validateBindingError(bindingResult);
 		if (errorMessage != null) {
@@ -410,19 +410,14 @@ public class MemberController {
 
 		if (dto.type().equals("Member")) {
 			if (memberService.updateMemberCoordinate(dto.id(), dto.latitude(), dto.longitude())) {
-				boolean b = batteryService.setMemberBattery(dto.id(), dto.battery());
-				if (!b) {
-					return addErrorStatus(result);
-				}
+				batteryService.setMemberBattery(dto.id(), dto.battery());
+
 				return addOkStatus(result);
 			}
 			return addErrorStatus(result);
 		}
 		if (memberService.updateChildCoordinate(dto.id(), dto.latitude(), dto.longitude())) {
-			boolean b = batteryService.setChildBattery(dto.id(), dto.battery());
-			if (!b) {
-				return addErrorStatus(result);
-			}
+			batteryService.setChildBattery(dto.id(), dto.battery());
 			noticeService.sendNotice(dto.id());
 			return addOkStatus(result);
 		}
@@ -437,25 +432,15 @@ public class MemberController {
 			MemberBattery memberBattery = batteryService.getMemberBattery(dto.id());
 			coordinates = memberService.getMemberCoordinate(dto.id());
 
-			if (memberBattery != null) {
-				coordinates.put("battery", (memberBattery.getBatteryValue() * 1.0));
-			}
-			if (coordinates != null) {
-				return ResponseEntity.ok(coordinates);
-			}
+			coordinates.put("battery", (memberBattery.getBatteryValue() * 1.0));
+			return ResponseEntity.ok(coordinates);
 		} else if (dto.type().equals("Child")) {
 			ChildBattery childBattery = batteryService.getChildBattery(dto.id());
 			coordinates = memberService.getChildCoordinate(dto.id());
 
-			if (childBattery != null) {
-				coordinates.put("battery", (childBattery.getBatteryValue() * 1.0));
-			}
-			if (coordinates != null) {
-				noticeService.sendNotice(dto.id());
-				return ResponseEntity.ok(coordinates);
-			}
-		} else {
-			return ResponseEntity.status(400).build();
+			coordinates.put("battery", (childBattery.getBatteryValue() * 1.0));
+			noticeService.sendNotice(dto.id());
+			return ResponseEntity.ok(coordinates);
 		}
 		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
 	}
@@ -550,7 +535,7 @@ public class MemberController {
 		try {
 			childList = memberService.findChildList(memberId);
 		} catch (NoSuchElementException e) {
-			return null;
+			return new HashMap<>();
 		}
 		if (childList != null) {
 			for (int i = 0; i < childList.size(); i++) {

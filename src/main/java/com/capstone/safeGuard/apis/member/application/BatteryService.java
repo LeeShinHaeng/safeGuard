@@ -12,8 +12,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Optional;
-
 @Service
 @RequiredArgsConstructor
 public class BatteryService {
@@ -23,10 +21,7 @@ public class BatteryService {
 	private final ChildRepository childRepository;
 
 	@Transactional
-	public void initChildBattery(String id, int battery) {
-		Child foundChild = childRepository.findByChildName(id)
-			.orElse(null);
-
+	public void initChildBattery(Child foundChild, int battery) {
 		childBatteryRepository.save(
 			ChildBattery.builder()
 				.childName(foundChild)
@@ -36,27 +31,28 @@ public class BatteryService {
 	}
 
 	@Transactional
-	public boolean setChildBattery(String id, int battery) {
+	public void setChildBattery(String id, int battery) {
 		Child foundChild = childRepository.findByChildName(id)
+			.orElseThrow(() -> new RuntimeException("Child not found"));
+
+		ChildBattery foundBattery = childBatteryRepository.findByChildName(foundChild)
 			.orElse(null);
 
-		Optional<ChildBattery> foundBattery = childBatteryRepository.findByChildName(foundChild);
-		if (foundBattery.isEmpty()) {
-			initChildBattery(id, battery);
-			return true;
+		if (foundBattery == null) {
+			initChildBattery(foundChild, battery);
+			return;
 		}
 
-		foundBattery.get().setBatteryValue(battery);
-		return true;
+		foundBattery.setBatteryValue(battery);
 	}
 
 	@Transactional
 	public ChildBattery getChildBattery(String id) {
 		Child foundChild = childRepository.findByChildName(id)
-			.orElse(null);
+			.orElseThrow(() -> new RuntimeException("Child not found"));
 
-		Optional<ChildBattery> foundBattery = childBatteryRepository.findByChildName(foundChild);
-		return foundBattery.orElse(null);
+		return childBatteryRepository.findByChildName(foundChild)
+			.orElseThrow(() -> new RuntimeException("ChildBattery not found"));
 	}
 
 
@@ -71,30 +67,27 @@ public class BatteryService {
 	}
 
 	@Transactional
-	public boolean setMemberBattery(String id, int battery) {
-		Optional<Member> foundMember = memberRepository.findById(id);
-		if (foundMember.isEmpty()) {
-			return false;
+	public void setMemberBattery(String id, int battery) {
+		Member foundMember = memberRepository.findById(id)
+			.orElseThrow(() -> new RuntimeException("Member not found"));
+
+		MemberBattery foundBattery = memberBatteryRepository.findByMemberId(foundMember)
+			.orElse(null);
+
+		if (foundBattery == null) {
+			initMemberBattery(foundMember, battery);
+			return;
 		}
 
-		Optional<MemberBattery> foundBattery = memberBatteryRepository.findByMemberId(foundMember.get());
-		if (foundBattery.isEmpty()) {
-			initMemberBattery(foundMember.get(), battery);
-			return true;
-		}
-
-		foundBattery.get().setBatteryValue(battery);
-		return true;
+		foundBattery.setBatteryValue(battery);
 	}
 
 	@Transactional
 	public MemberBattery getMemberBattery(String id) {
-		Optional<Member> foundMember = memberRepository.findById(id);
-		if (foundMember.isEmpty()) {
-			return null;
-		}
+		Member foundMember = memberRepository.findById(id)
+			.orElseThrow(() -> new RuntimeException("Member not found"));
 
-		Optional<MemberBattery> foundBattery = memberBatteryRepository.findByMemberId(foundMember.get());
-		return foundBattery.orElse(null);
+		return memberBatteryRepository.findByMemberId(foundMember)
+			.orElseThrow(() -> new RuntimeException("MemberBattery not found"));
 	}
 }

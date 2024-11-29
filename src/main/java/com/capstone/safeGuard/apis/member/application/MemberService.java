@@ -540,12 +540,9 @@ public class MemberService {
 
 	@Transactional
 	public Map<String, Double> getMemberCoordinate(String id) {
-		Optional<Member> foundMember = memberRepository.findById(id);
-		if (foundMember.isEmpty()) {
-			return null;
-		}
+		Member member = memberRepository.findById(id)
+			.orElseThrow(() -> new RuntimeException("Member not found"));
 
-		Member member = foundMember.get();
 		Map<String, Double> coordinates = new HashMap<>();
 		coordinates.put("latitude", member.getLatitude());
 		coordinates.put("longitude", member.getLongitude());
@@ -556,10 +553,7 @@ public class MemberService {
 	@Transactional
 	public Map<String, Double> getChildCoordinate(String id) {
 		Child foundChild = childRepository.findBychildName(id)
-			.orElse(null);
-		if (foundChild == null) {
-			return null;
-		}
+			.orElseThrow(() -> new RuntimeException("Child not found"));
 
 		Map<String, Double> coordinates = new HashMap<>();
 		coordinates.put("latitude", foundChild.getLatitude());
