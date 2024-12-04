@@ -18,14 +18,12 @@ import com.capstone.safeGuard.domain.map.infrastructure.CoordinateRepository;
 import com.capstone.safeGuard.domain.member.domain.Authority;
 import com.capstone.safeGuard.domain.member.domain.Child;
 import com.capstone.safeGuard.domain.member.domain.ChildBattery;
-import com.capstone.safeGuard.domain.member.domain.EmailAuthCode;
 import com.capstone.safeGuard.domain.member.domain.Helping;
 import com.capstone.safeGuard.domain.member.domain.Member;
 import com.capstone.safeGuard.domain.member.domain.MemberBattery;
 import com.capstone.safeGuard.domain.member.domain.Parenting;
 import com.capstone.safeGuard.domain.member.infrastructure.ChildBatteryRepository;
 import com.capstone.safeGuard.domain.member.infrastructure.ChildRepository;
-import com.capstone.safeGuard.domain.member.infrastructure.EmailAuthCodeRepository;
 import com.capstone.safeGuard.domain.member.infrastructure.HelpingRepository;
 import com.capstone.safeGuard.domain.member.infrastructure.MemberBatteryRepository;
 import com.capstone.safeGuard.domain.member.infrastructure.MemberRepository;
@@ -50,8 +48,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 
-import java.time.Duration;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -59,7 +55,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Random;
 
 @Service
 @RequiredArgsConstructor
@@ -71,10 +66,7 @@ public class MemberService {
 	private final HelpingRepository helpingRepository;
 	private final PasswordEncoder passwordEncoder;
 	private final JwtService jwtService;
-	private final MailService mailService;
-	private final EmailAuthCodeRepository emailAuthCodeRepository;
 
-	private static final int emailAuthCodeDuration = 1800; // 30 * 60 * 1000 == 30분
 	private final ConfirmRepository confirmRepository;
 	private final CommentRepository commentRepository;
 	private final MemberBatteryRepository memberBatteryRepository;
@@ -361,47 +353,6 @@ public class MemberService {
 		return foundMember.getMemberId();
 	}
 
-	public boolean sendCodeToEmail(String memberId) {
-		Member foundMember = findMemberById(memberId);
-
-
-		String address = foundMember.getEmail();
-		String title = "SafeGuard 이메일 인증 번호";
-		String authCode = createCode();
-
-		mailService.sendEmail(address, title, authCode);
-		Optional<EmailAuthCode> foundCode = emailAuthCodeRepository.findById(memberId);
-		foundCode.ifPresent(emailAuthCodeRepository::delete);
-		emailAuthCodeRepository.save(new EmailAuthCode(address, authCode, LocalDateTime.now()));
-		return true;
-	}
-
-	private String createCode() {
-		int length = 6;
-		Random random = new Random();
-		StringBuilder builder = new StringBuilder();
-		for (int i = 0; i < length; i++) {
-			builder.append(random.nextInt(10));
-		}
-
-		return builder.toString();
-	}
-
-	public boolean verifiedCode(String memberId, String authCode) {
-		Member foundMember = findMemberById(memberId);
-
-		Optional<EmailAuthCode> foundCode = emailAuthCodeRepository.findById(foundMember.getEmail());
-		if (foundCode.isEmpty()) {
-			return false;
-		}
-
-		if (Duration.between(foundCode.get().getCreatedAt(), LocalDateTime.now()).getSeconds()
-			> emailAuthCodeDuration) {
-			return false;
-		}
-
-		return authCode.equals(foundCode.get().getAuthCode());
-	}
 
 	@Transactional
 	public boolean resetMemberPassword(ResetPasswordRequest dto) {
@@ -510,7 +461,8 @@ public class MemberService {
 	}
 
 	public Member findMemberById(String memberId) {
-		return findMemberById(memberId);
+		return memberRepository.findById(memberId)
+			.orElseThrow(() -> new RuntimeException("Member not found"));
 	}
 
 	@Transactional

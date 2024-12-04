@@ -2,6 +2,7 @@ package com.capstone.safeGuard.apis.member.presentation;
 
 import com.capstone.safeGuard.apis.member.application.BatteryService;
 import com.capstone.safeGuard.apis.member.application.JwtService;
+import com.capstone.safeGuard.apis.member.application.MailService;
 import com.capstone.safeGuard.apis.member.application.MemberService;
 import com.capstone.safeGuard.apis.member.presentation.request.findidandresetpw.EmailRequest;
 import com.capstone.safeGuard.apis.member.presentation.request.findidandresetpw.FindMemberIdRequest;
@@ -57,6 +58,7 @@ public class MemberController {
 	private final JwtService jwtService;
 	private final BatteryService batteryService;
 	private final NoticeService noticeService;
+	private final MailService mailService;
 
 	@GetMapping("/login")
 	public String showLoginForm() {
@@ -305,7 +307,7 @@ public class MemberController {
 	@PostMapping("/verification-email-request")
 	public ResponseEntity<Map<String, String>> verificationEmailRequest(@RequestBody EmailRequest dto) {
 		Map<String, String> result = new HashMap<>();
-		if (!memberService.sendCodeToEmail(dto.inputId())) {
+		if (!mailService.sendCodeToEmail(dto.inputId())) {
 			// 해당 아이디가 존재하지 않음
 			return addErrorStatus(result);
 		}
@@ -317,7 +319,7 @@ public class MemberController {
 	@PostMapping("/verification-email")
 	public ResponseEntity<Map<String, String>> verificationEmail(@RequestBody VerificationEmailRequest dto) {
 		Map<String, String> result = new HashMap<>();
-		if (!memberService.verifiedCode(dto.inputId(), dto.inputCode())) {
+		if (!mailService.verifiedCode(dto.inputId(), dto.inputCode())) {
 			// 코드가 틀렸다는 메시지와 함께 다시 입력하는 곳으로 리다이렉트
 			return addErrorStatus(result);
 		}
