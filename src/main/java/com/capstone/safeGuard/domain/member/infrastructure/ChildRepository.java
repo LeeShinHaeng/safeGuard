@@ -12,8 +12,5 @@ public interface ChildRepository extends JpaRepository<Child, Long> {
 
     void delete(Child child);
 
-    // todo 고치기
-    Optional<Child> findBychildName(String childName);
-
     boolean existsByChildName(String childName);
 }

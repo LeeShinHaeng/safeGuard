@@ -90,8 +90,7 @@ public class MemberService {
 	@Transactional
 	public Member memberLogin(LoginRequest dto) {
 		// 존재하는 멤버인가
-		Member member = memberRepository.findById(dto.editTextID())
-			.orElseThrow(() -> new RuntimeException("Member not found"));
+		Member member = findMemberById(dto.editTextID());
 
 		// ID와 PW가 일치하는가
 		findMemberWithAuthenticate(member, dto.editTextPW());
@@ -117,8 +116,8 @@ public class MemberService {
 	}
 
 	public Child childLogin(LoginRequest dto) {
-		Child child = childRepository.findBychildName(dto.editTextID())
-			.orElseThrow(() -> new RuntimeException("Child not found"));
+		String name = dto.editTextID();
+		Child child = findChildByName(name);
 
 		findChildWithAuthenticate(child, dto.editTextPW());
 
@@ -163,8 +162,7 @@ public class MemberService {
 
 		// member child 연결
 		String memberId = childDto.memberId();
-		Member member = memberRepository.findById(memberId)
-			.orElseThrow(() -> new RuntimeException("Member not found"));
+		Member member = findMemberById(memberId);
 
 		saveParenting(member, child);
 	}
@@ -189,24 +187,17 @@ public class MemberService {
 		String childName = memberRegisterRequest.childName();
 		String memberId = memberRegisterRequest.parentId();
 
-		Child selectedChild = childRepository.findBychildName(childName)
-			.orElse(null);
-		if (selectedChild == null) {
-			return false;
-		}
-		Optional<Member> findMember = memberRepository.findById(memberId);
-		if (findMember.isEmpty()) {
-			return false;
-		}
+		Child selectedChild = findChildByName(childName);
+		Member findMember = findMemberById(memberId);
 
-		List<Helping> foundHelpingList = helpingRepository.findAllByHelper(findMember.get());
+		List<Helping> foundHelpingList = helpingRepository.findAllByHelper(findMember);
 		for (Helping foundHelping : foundHelpingList) {
 			if (foundHelping.getChild().equals(selectedChild)) {
 				return false;
 			}
 		}
 
-		helping.setHelper(findMember.get());
+		helping.setHelper(findMember);
 		helping.setChild(selectedChild);
 
 		helpingRepository.save(helping);
@@ -216,10 +207,7 @@ public class MemberService {
 
 	@Transactional
 	public Boolean memberRemove(String memberId) {
-		Optional<Member> member = memberRepository.findById(memberId);
-		if (member.isEmpty()) {
-			return false;
-		}
+		Member member = findMemberById(memberId);
 
 		ArrayList<String> childNameList = findChildList(memberId);
 		if (!(childNameList == null)) {
@@ -228,12 +216,12 @@ public class MemberService {
 			}
 		}
 
-		List<Comment> commented = member.get().getCommented();
+		List<Comment> commented = member.getCommented();
 		if (!(commented == null)) {
 			commentRepository.deleteAll(commented);
 		}
 
-		List<Helping> helpingList = member.get().getHelpingList();
+		List<Helping> helpingList = member.getHelpingList();
 		if (!(helpingList == null)) {
 			for (Helping helping : helpingList) {
 				ArrayList<Confirm> confirmArrayList = confirmRepository.findAllByHelpingId(helping);
@@ -244,15 +232,15 @@ public class MemberService {
 			helpingRepository.deleteAll(helpingList);
 		}
 
-		List<Parenting> parentingList = member.get().getParentingList();
+		List<Parenting> parentingList = member.getParentingList();
 		if (!(parentingList == null)) {
 			parentingRepository.deleteAll(parentingList);
 		}
 
-		memberFileRepository.findByMember(member.get())
+		memberFileRepository.findByMember(member)
 			.ifPresent(memberFileRepository::delete);
 
-		List<Emergency> emergencyList = emergencyRepository.findAllBySenderId(member.get());
+		List<Emergency> emergencyList = emergencyRepository.findAllBySenderId(member);
 		if (!(emergencyList == null)) {
 			for (Emergency emergency : emergencyList) {
 				List<EmergencyReceiver> emergencyReceiverList = emergencyReceiverRepository.findAllByEmergency(emergency);
@@ -263,20 +251,16 @@ public class MemberService {
 			emergencyRepository.deleteAll(emergencyList);
 		}
 
-		Optional<MemberBattery> memberBattery = memberBatteryRepository.findByMemberId(member.get());
+		Optional<MemberBattery> memberBattery = memberBatteryRepository.findByMemberId(member);
 		memberBattery.ifPresent(battery -> memberBatteryRepository.deleteById(battery.getMemberBatteryId()));
 
-		memberRepository.delete(member.get());
+		memberRepository.delete(member);
 		return true;
 	}
 
 	@Transactional
 	public Boolean childRemove(String childName) {
-		Child selectedChild = childRepository.findBychildName(childName)
-			.orElse(null);
-		if (selectedChild == null) {
-			return false;
-		}
+		Child selectedChild = findChildByName(childName);
 
 		List<Emergency> emergencyList = emergencyRepository.findAllByChild(selectedChild);
 		if (!(emergencyList == null)) {
@@ -326,7 +310,7 @@ public class MemberService {
 
 	@Transactional
 	public Boolean helperRemove(HelperRemoveRequest dto) {
-		Helping helping = helpingRepository.findByHelper_MemberIdAndChild_ChildName(dto.memberId(), dto.childName());
+		Helping helping = helpingRepository.findByHelperMemberIdAndChildChildName(dto.memberId(), dto.childName());
 		if (helping == null) {
 			return false;
 		}
@@ -344,15 +328,10 @@ public class MemberService {
 	}
 
 	public List<Child> getChildList(String memberId) {
-		Optional<Member> loginedMember = memberRepository.findById(memberId);
-		if (loginedMember.isEmpty()) {
-			return null;
-		}
-		Member member = loginedMember.get();
+		Member member = findMemberById(memberId);
 
 		List<Child> childList = new ArrayList<>();
 		for (Parenting parenting : member.getParentingList()) {
-
 			if (Objects.equals(parenting.getParent().getMemberId(), member.getMemberId())) {
 				childList.add(parenting.getChild());
 			}
@@ -383,12 +362,10 @@ public class MemberService {
 	}
 
 	public boolean sendCodeToEmail(String memberId) {
-		Optional<Member> foundMember = memberRepository.findById(memberId);
-		if (foundMember.isEmpty()) {
-			return false;
-		}
+		Member foundMember = findMemberById(memberId);
 
-		String address = foundMember.get().getEmail();
+
+		String address = foundMember.getEmail();
 		String title = "SafeGuard 이메일 인증 번호";
 		String authCode = createCode();
 
@@ -410,14 +387,10 @@ public class MemberService {
 		return builder.toString();
 	}
 
-
 	public boolean verifiedCode(String memberId, String authCode) {
-		Optional<Member> foundMember = memberRepository.findById(memberId);
-		if (foundMember.isEmpty()) {
-			return false;
-		}
+		Member foundMember = findMemberById(memberId);
 
-		Optional<EmailAuthCode> foundCode = emailAuthCodeRepository.findById(foundMember.get().getEmail());
+		Optional<EmailAuthCode> foundCode = emailAuthCodeRepository.findById(foundMember.getEmail());
 		if (foundCode.isEmpty()) {
 			return false;
 		}
@@ -432,24 +405,17 @@ public class MemberService {
 
 	@Transactional
 	public boolean resetMemberPassword(ResetPasswordRequest dto) {
-		Optional<Member> foundMember = memberRepository.findById(dto.id());
+		Member foundMember = findMemberById(dto.id());
 
-		if (foundMember.isEmpty()) {
-			return false;
-		}
-
-		foundMember.get().setPassword(passwordEncoder.encode(dto.newPassword()));
+		foundMember.setPassword(passwordEncoder.encode(dto.newPassword()));
 		return true;
 	}
 
 	@Transactional
 	public ArrayList<String> findChildList(String memberId) {
-		Optional<Member> foundMember = memberRepository.findById(memberId);
-		if (foundMember.isEmpty()) {
-			return null;
-		}
+		Member foundMember = findMemberById(memberId);
 
-		List<Parenting> parentingList = foundMember.get().getParentingList();
+		List<Parenting> parentingList = foundMember.getParentingList();
 		if (parentingList.isEmpty()) {
 			return null;
 		}
@@ -464,13 +430,7 @@ public class MemberService {
 
 	@Transactional
 	public boolean resetChildPassword(ResetPasswordRequest dto) {
-		Child foundChild = childRepository.findBychildName(dto.id())
-			.orElse(null);
-
-		if (foundChild == null) {
-			return false;
-		}
-
+		Child foundChild = findChildByName(dto.id());
 		foundChild.setChildPassword(passwordEncoder.encode(dto.newPassword()));
 		return true;
 	}
@@ -480,37 +440,24 @@ public class MemberService {
 	}
 
 	@Transactional
-	public boolean updateMemberCoordinate(String id, double latitude, double longitude) {
-		Optional<Member> foundMember = memberRepository.findById(id);
-		if (foundMember.isEmpty()) {
-			return false;
-		}
-
-		foundMember.get().setLatitude(latitude);
-		foundMember.get().setLongitude(longitude);
-
-		return true;
+	public void updateMemberCoordinate(String id, double latitude, double longitude) {
+		Member foundMember = findMemberById(id);
+		foundMember.setLatitude(latitude);
+		foundMember.setLongitude(longitude);
 	}
 
 	// 해당 메소드에서 id는 child의 name이다.
 	@Transactional
-	public boolean updateChildCoordinate(String id, double latitude, double longitude) {
-		Child foundChild = childRepository.findBychildName(id)
-			.orElse(null);
-		if (foundChild == null) {
-			return false;
-		}
+	public void updateChildCoordinate(String name, double latitude, double longitude) {
+		Child foundChild = findChildByName(name);
 
 		foundChild.setLatitude(latitude);
 		foundChild.setLongitude(longitude);
-
-		return true;
 	}
 
 	@Transactional
 	public Map<String, Double> getMemberCoordinate(String id) {
-		Member member = memberRepository.findById(id)
-			.orElseThrow(() -> new RuntimeException("Member not found"));
+		Member member = findMemberById(id);
 
 		Map<String, Double> coordinates = new HashMap<>();
 		coordinates.put("latitude", member.getLatitude());
@@ -521,8 +468,7 @@ public class MemberService {
 
 	@Transactional
 	public Map<String, Double> getChildCoordinate(String id) {
-		Child foundChild = childRepository.findBychildName(id)
-			.orElseThrow(() -> new RuntimeException("Child not found"));
+		Child foundChild = findChildByName(id);
 
 		Map<String, Double> coordinates = new HashMap<>();
 		coordinates.put("latitude", foundChild.getLatitude());
@@ -536,24 +482,21 @@ public class MemberService {
 		if (flag) {
 			return memberRepository.findById(id).isPresent();
 		}
-		return childRepository.findBychildName(id).isPresent();
+		return childRepository.findByChildName(id).isPresent();
 	}
 
 	@Transactional
 	public Child findChildByChildName(String childName) {
-		return childRepository.findBychildName(childName)
+		return childRepository.findByChildName(childName)
 			.orElse(null);
 	}
 
 
 	@Transactional
 	public ArrayList<String> findHelpingList(String memberId) {
-		Optional<Member> foundMember = memberRepository.findById(memberId);
-		if (foundMember.isEmpty()) {
-			return null;
-		}
+		Member foundMember = findMemberById(memberId);
 
-		List<Helping> helpingList = foundMember.get().getHelpingList();
+		List<Helping> helpingList = foundMember.getHelpingList();
 		if (helpingList.isEmpty()) {
 			return null;
 		}
@@ -567,31 +510,27 @@ public class MemberService {
 	}
 
 	public Member findMemberById(String memberId) {
-		return memberRepository.findById(memberId)
-			.orElseThrow(() -> new RuntimeException("Member not found"));
+		return findMemberById(memberId);
 	}
 
 	@Transactional
 	public boolean addParent(String memberId, String childName) {
-		Optional<Member> foundMember = memberRepository.findById(memberId);
-		if (foundMember.isEmpty()) {
-			return false;
-		}
+		Member foundMember = findMemberById(memberId);
 
-		Child foundChild = childRepository.findBychildName(childName)
+		Child foundChild = childRepository.findByChildName(childName)
 			.orElse(null);
 		if (foundChild == null) {
 			return false;
 		}
 
-		List<Parenting> foundParentingList = parentingRepository.findAllByParent(foundMember.get());
+		List<Parenting> foundParentingList = parentingRepository.findAllByParent(foundMember);
 		for (Parenting foundParenting : foundParentingList) {
 			if (foundParenting.getChild().equals(foundChild)) {
 				return false;
 			}
 		}
 
-		saveParenting(foundMember.get(), foundChild);
+		saveParenting(foundMember, foundChild);
 
 		return true;
 	}
@@ -613,9 +552,13 @@ public class MemberService {
 	@Transactional
 	public boolean updateMemberName(UpdateMemberNameRequest dto) {
 		Member foundMember = findMemberById(dto.userID());
-
 		foundMember.setName(dto.nickname());
 		return true;
+	}
+
+	private Child findChildByName(String name) {
+		return childRepository.findByChildName(name)
+			.orElseThrow(() -> new RuntimeException("Child not found"));
 	}
 
 	public String getNicknameById(String memberId) {

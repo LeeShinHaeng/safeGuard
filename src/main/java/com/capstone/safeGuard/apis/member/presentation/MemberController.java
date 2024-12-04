@@ -384,19 +384,15 @@ public class MemberController {
 		Map<String, String> result = new HashMap<>();
 
 		if (dto.type().equals("Member")) {
-			if (memberService.updateMemberCoordinate(dto.id(), dto.latitude(), dto.longitude())) {
-				batteryService.setMemberBattery(dto.id(), dto.battery());
-
-				return addOkStatus(result);
-			}
-			return addErrorStatus(result);
-		}
-		if (memberService.updateChildCoordinate(dto.id(), dto.latitude(), dto.longitude())) {
-			batteryService.setChildBattery(dto.id(), dto.battery());
-			noticeService.sendNotice(dto.id());
+			memberService.updateMemberCoordinate(dto.id(), dto.latitude(), dto.longitude());
+			batteryService.setMemberBattery(dto.id(), dto.battery());
 			return addOkStatus(result);
 		}
-		return addErrorStatus(result);
+		memberService.updateChildCoordinate(dto.id(), dto.latitude(), dto.longitude());
+		batteryService.setChildBattery(dto.id(), dto.battery());
+		noticeService.sendNotice(dto.id());
+		return addOkStatus(result);
+
 	}
 
 	@PostMapping("/return-coordinate")

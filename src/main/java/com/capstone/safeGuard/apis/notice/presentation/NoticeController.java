@@ -61,7 +61,7 @@ public class NoticeController {
 
 	@PostMapping("/fatal")
 	public ResponseEntity<StatusOnlyResponse> fatal(@RequestBody FatalRequest dto) {
-		Child foundChild = childRepository.findBychildName(dto.childName())
+		Child foundChild = childRepository.findByChildName(dto.childName())
 			.orElseThrow(() -> new RuntimeException("Child not found"));
 
 		List<Parenting> childParentingList = foundChild.getParentingList();

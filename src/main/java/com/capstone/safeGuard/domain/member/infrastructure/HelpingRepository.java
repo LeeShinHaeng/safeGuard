@@ -12,7 +12,7 @@ public interface HelpingRepository extends JpaRepository<Helping, Long> {
 
     Helping findByHelper(Member helper);
 
-    Helping findByHelper_MemberIdAndChild_ChildName(String memberId, String childName);
+    Helping findByHelperMemberIdAndChildChildName(String memberId, String childName);
 
     List<Helping> findAllByHelper(Member foundMember);
 }

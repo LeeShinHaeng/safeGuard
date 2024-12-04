@@ -22,7 +22,7 @@ public class CoordinateService {
 
 	@Transactional
 	public Long addForbiddenArea(AddAreaRequest addAreaRequest) {
-		Child foundChild = childRepository.findBychildName(addAreaRequest.childName())
+		Child foundChild = childRepository.findByChildName(addAreaRequest.childName())
 			.orElseThrow(() -> new RuntimeException("No Such Child"));
 
 		Coordinate coordinate = addAreaRequest.dtoToDomain(foundChild, false);
@@ -37,7 +37,7 @@ public class CoordinateService {
 	@Transactional
 	public Long addLivingArea(AddAreaRequest addAreaRequest) {
 		log.info("addLivingArea 도착");
-		Child foundChild = childRepository.findBychildName(addAreaRequest.childName())
+		Child foundChild = childRepository.findByChildName(addAreaRequest.childName())
 			.orElseThrow(() -> new RuntimeException("No Such Child"));
 
 		Coordinate coordinate = addAreaRequest.dtoToDomain(foundChild, true);
@@ -57,7 +57,7 @@ public class CoordinateService {
 		String childName = dto.childName();
 
 		log.info("deleteArea 시작");
-		Child foundChild = childRepository.findBychildName(childName)
+		Child foundChild = childRepository.findByChildName(childName)
 			.orElseThrow(() -> new RuntimeException("No Such Child"));
 		Coordinate foundCoordinate = findAreaById(areaID);
 		if (! foundChild.equals(foundCoordinate.getChild())) {
@@ -68,7 +68,7 @@ public class CoordinateService {
 	}
 
 	public ArrayList<Coordinate> readAreasByChild(String childName) {
-		Child foundChild = childRepository.findBychildName(childName)
+		Child foundChild = childRepository.findByChildName(childName)
 			.orElseThrow(() -> new RuntimeException("No Such Child"));
 
 		return coordinateRepository.findAllByChild(foundChild);
