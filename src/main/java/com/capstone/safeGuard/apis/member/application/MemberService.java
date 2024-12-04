@@ -50,9 +50,7 @@ import org.springframework.validation.FieldError;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -349,10 +347,8 @@ public class MemberService {
 		if (foundMember == null || (!foundMember.getName().equals(dto.name()))) {
 			return null;
 		}
-
 		return foundMember.getMemberId();
 	}
-
 
 	@Transactional
 	public boolean resetMemberPassword(ResetPasswordRequest dto) {
@@ -389,45 +385,6 @@ public class MemberService {
 	public ArrayList<Member> findAllMember() {
 		return new ArrayList<>(memberRepository.findAll());
 	}
-
-	@Transactional
-	public void updateMemberCoordinate(String id, double latitude, double longitude) {
-		Member foundMember = findMemberById(id);
-		foundMember.setLatitude(latitude);
-		foundMember.setLongitude(longitude);
-	}
-
-	// 해당 메소드에서 id는 child의 name이다.
-	@Transactional
-	public void updateChildCoordinate(String name, double latitude, double longitude) {
-		Child foundChild = findChildByName(name);
-
-		foundChild.setLatitude(latitude);
-		foundChild.setLongitude(longitude);
-	}
-
-	@Transactional
-	public Map<String, Double> getMemberCoordinate(String id) {
-		Member member = findMemberById(id);
-
-		Map<String, Double> coordinates = new HashMap<>();
-		coordinates.put("latitude", member.getLatitude());
-		coordinates.put("longitude", member.getLongitude());
-
-		return coordinates;
-	}
-
-	@Transactional
-	public Map<String, Double> getChildCoordinate(String id) {
-		Child foundChild = findChildByName(id);
-
-		Map<String, Double> coordinates = new HashMap<>();
-		coordinates.put("latitude", foundChild.getLatitude());
-		coordinates.put("longitude", foundChild.getLongitude());
-
-		return coordinates;
-	}
-
 
 	public boolean isPresent(String id, boolean flag) {
 		if (flag) {

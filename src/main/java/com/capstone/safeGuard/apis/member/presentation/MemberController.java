@@ -1,5 +1,6 @@
 package com.capstone.safeGuard.apis.member.presentation;
 
+import com.capstone.safeGuard.apis.map.application.CoordinateService;
 import com.capstone.safeGuard.apis.member.application.BatteryService;
 import com.capstone.safeGuard.apis.member.application.JwtService;
 import com.capstone.safeGuard.apis.member.application.MailService;
@@ -59,6 +60,7 @@ public class MemberController {
 	private final BatteryService batteryService;
 	private final NoticeService noticeService;
 	private final MailService mailService;
+	private final CoordinateService coordinateService;
 
 	@GetMapping("/login")
 	public String showLoginForm() {
@@ -386,11 +388,11 @@ public class MemberController {
 		Map<String, String> result = new HashMap<>();
 
 		if (dto.type().equals("Member")) {
-			memberService.updateMemberCoordinate(dto.id(), dto.latitude(), dto.longitude());
+			coordinateService.updateMemberCoordinate(dto.id(), dto.latitude(), dto.longitude());
 			batteryService.setMemberBattery(dto.id(), dto.battery());
 			return addOkStatus(result);
 		}
-		memberService.updateChildCoordinate(dto.id(), dto.latitude(), dto.longitude());
+		coordinateService.updateChildCoordinate(dto.id(), dto.latitude(), dto.longitude());
 		batteryService.setChildBattery(dto.id(), dto.battery());
 		noticeService.sendNotice(dto.id());
 		return addOkStatus(result);
@@ -403,13 +405,13 @@ public class MemberController {
 
 		if (dto.type().equals("Member")) {
 			MemberBattery memberBattery = batteryService.getMemberBattery(dto.id());
-			coordinates = memberService.getMemberCoordinate(dto.id());
+			coordinates = coordinateService.getMemberCoordinate(dto.id());
 
 			coordinates.put("battery", (memberBattery.getBatteryValue() * 1.0));
 			return ResponseEntity.ok(coordinates);
 		} else if (dto.type().equals("Child")) {
 			ChildBattery childBattery = batteryService.getChildBattery(dto.id());
-			coordinates = memberService.getChildCoordinate(dto.id());
+			coordinates = coordinateService.getChildCoordinate(dto.id());
 
 			coordinates.put("battery", (childBattery.getBatteryValue() * 1.0));
 			noticeService.sendNotice(dto.id());
