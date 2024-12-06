@@ -30,11 +30,6 @@ public class CoordinateController {
 	@PostMapping("/add-safe")
 	public ResponseEntity<AreaPersistResponse> addLivingArea(@RequestBody AddAreaRequest dto) {
 		Long areaId = coordinateService.addLivingArea(dto);
-		if (areaId == 0L) {
-			return ResponseEntity.
-				status(400)
-				.body(AreaPersistResponse.of(400, ""));
-		}
 
 		return ResponseEntity
 			.ok(AreaPersistResponse.of(200, areaId.toString()));
@@ -43,11 +38,6 @@ public class CoordinateController {
 	@PostMapping("/add-dangerous")
 	public ResponseEntity<AreaPersistResponse> addForbiddenArea(@RequestBody AddAreaRequest dto) {
 		Long areaId = coordinateService.addForbiddenArea(dto);
-		if (areaId == 0L) {
-			return ResponseEntity.
-				status(400)
-				.body(AreaPersistResponse.of(400, ""));
-		}
 
 		return ResponseEntity
 			.ok(AreaPersistResponse.of(200, areaId.toString()));
@@ -55,14 +45,8 @@ public class CoordinateController {
 
 	@PostMapping("/delete-area")
 	public ResponseEntity<StatusOnlyResponse> deleteArea(@RequestBody DeleteAreaRequest dto) {
-		if (!coordinateService.deleteArea(dto)) {
-			return ResponseEntity.
-				status(400)
-				.body(StatusOnlyResponse.of(400));
-		}
-
-		return ResponseEntity
-			.ok(StatusOnlyResponse.of(200));
+		coordinateService.deleteArea(dto);
+		return ResponseEntity.ok(StatusOnlyResponse.of(200));
 	}
 
 	// TODO 키 값이 아이디인데 DTO로 리턴하기는 어려울 것 같음, 해결할 방법 찾기

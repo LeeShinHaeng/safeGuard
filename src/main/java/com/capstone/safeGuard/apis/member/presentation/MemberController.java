@@ -1,25 +1,28 @@
 package com.capstone.safeGuard.apis.member.presentation;
 
+import com.capstone.safeGuard.apis.map.application.CoordinateService;
 import com.capstone.safeGuard.apis.member.application.BatteryService;
+import com.capstone.safeGuard.apis.member.application.ChildService;
 import com.capstone.safeGuard.apis.member.application.JwtService;
+import com.capstone.safeGuard.apis.member.application.MailService;
 import com.capstone.safeGuard.apis.member.application.MemberService;
+import com.capstone.safeGuard.apis.member.application.MemberUtil;
 import com.capstone.safeGuard.apis.member.presentation.request.findidandresetpw.EmailRequest;
 import com.capstone.safeGuard.apis.member.presentation.request.findidandresetpw.FindMemberIdRequest;
 import com.capstone.safeGuard.apis.member.presentation.request.findidandresetpw.MemberIdRequest;
 import com.capstone.safeGuard.apis.member.presentation.request.findidandresetpw.ResetPasswordRequest;
 import com.capstone.safeGuard.apis.member.presentation.request.findidandresetpw.VerificationEmailRequest;
-import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.MemberRegisterRequest;
 import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.ChildRegisterRequest;
-import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.HelperRemoveRequest;
 import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.GetIdRequest;
+import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.HelperRemoveRequest;
 import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.LoginRequest;
+import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.MemberRegisterRequest;
 import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.SignUpRequest;
 import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.UpdateMemberNameRequest;
 import com.capstone.safeGuard.apis.member.presentation.request.updatecoordinate.CoordinateRequest;
 import com.capstone.safeGuard.apis.member.presentation.request.updatecoordinate.UpdateCoordinate;
 import com.capstone.safeGuard.apis.member.presentation.response.TokenInfo;
 import com.capstone.safeGuard.apis.notice.application.NoticeService;
-import com.capstone.safeGuard.domain.member.domain.Authority;
 import com.capstone.safeGuard.domain.member.domain.Child;
 import com.capstone.safeGuard.domain.member.domain.ChildBattery;
 import com.capstone.safeGuard.domain.member.domain.Helping;
@@ -27,7 +30,6 @@ import com.capstone.safeGuard.domain.member.domain.LoginType;
 import com.capstone.safeGuard.domain.member.domain.Member;
 import com.capstone.safeGuard.domain.member.domain.MemberBattery;
 import com.capstone.safeGuard.domain.member.domain.Parenting;
-import com.capstone.safeGuard.util.JwtTokenProvider;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
@@ -37,9 +39,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.annotation.Validated;
@@ -49,7 +48,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -60,10 +58,13 @@ import java.util.NoSuchElementException;
 @Slf4j
 public class MemberController {
 	private final MemberService memberService;
-	private final JwtTokenProvider jwtTokenProvider;
 	private final JwtService jwtService;
 	private final BatteryService batteryService;
 	private final NoticeService noticeService;
+	private final MailService mailService;
+	private final CoordinateService coordinateService;
+	private final ChildService childService;
+	private final MemberUtil memberUtil;
 
 	@GetMapping("/login")
 	public String showLoginForm() {
@@ -86,24 +87,18 @@ public class MemberController {
 		// Member 타입으로 로그인 하는 경우
 		if (dto.loginType().equals(LoginType.Member.toString())) {
 			Member memberLogin = memberService.memberLogin(dto);
-			if (memberLogin == null) {
-				return addErrorStatus(result);
-			}
 
 			// member가 존재하는 경우 token을 전달
-			TokenInfo tokenInfo = generateTokenOfMember(memberLogin);
+			TokenInfo tokenInfo = memberService.generateTokenOfMember(memberLogin);
 			storeTokenInBody(response, result, tokenInfo);
 			result.put("Type", "Member");
 		}
 		// Child 타입으로 로그인 하는 경우
 		else {
-			Child childLogin = memberService.childLogin(dto);
-			if (childLogin == null) {
-				return addErrorStatus(result);
-			}
+			Child childLogin = childService.childLogin(dto);
 
 			// child가 존재하는 경우 token을 전달
-			TokenInfo tokenInfo = generateTokenOfChild(childLogin);
+			TokenInfo tokenInfo = memberService.generateTokenOfChild(childLogin);
 			storeTokenInBody(response, result, tokenInfo);
 
 			HttpSession session = request.getSession();
@@ -134,17 +129,12 @@ public class MemberController {
 
 		HashMap<String, String> result = new HashMap<>();
 
-		String errorMessage = memberService.validateBindingError(bindingResult);
+		String errorMessage = memberUtil.validateBindingError(bindingResult);
 		if (errorMessage != null) {
 			return addErrorStatus(result);
 		}
 
-		Boolean signUpSuccess = memberService.signup(dto);
-		if (!signUpSuccess) {
-			log.info("signupFail = {}", signUpSuccess);
-			return addErrorStatus(result);
-		}
-		log.info("signup success = {}", signUpSuccess);
+		memberService.signup(dto);
 		return addOkStatus(result);
 	}
 
@@ -156,19 +146,13 @@ public class MemberController {
 	@PostMapping("/memberremove")
 	public ResponseEntity<?> memberRemove(@Validated @RequestBody MemberIdRequest dto, BindingResult bindingResult) {
 
-		String errorMessage = memberService.validateBindingError(bindingResult);
+		String errorMessage = memberUtil.validateBindingError(bindingResult);
 		if (errorMessage != null) {
 			return ResponseEntity.badRequest().body(errorMessage);
 		}
 
 		String memberId = dto.memberId();
-
-		Boolean removeSuccess = memberService.memberRemove(memberId);
-		if (!removeSuccess) {
-			return ResponseEntity.status(400).build();
-		}
-
-		log.info("멤버 삭제 성공!");
+		memberService.memberRemove(memberId);
 		return ResponseEntity.ok().build();
 	}
 
@@ -178,21 +162,16 @@ public class MemberController {
 	}
 
 	@PostMapping(value = "/childsignup", produces = MediaType.APPLICATION_JSON_VALUE)
-	public ResponseEntity childSignUp(@Validated @RequestBody ChildRegisterRequest childDto,
-									  BindingResult bindingResult) {
+	public ResponseEntity<String> childSignUp(@Validated @RequestBody ChildRegisterRequest childDto,
+											  BindingResult bindingResult) {
 		log.info("childSignup 실행");
 
-		String errorMessage = memberService.validateBindingError(bindingResult);
+		String errorMessage = memberUtil.validateBindingError(bindingResult);
 		if (errorMessage != null) {
 			return ResponseEntity.badRequest().body(errorMessage);
 		}
 
-		Boolean signUpSuccess = memberService.childSignUp(childDto);
-		if (!signUpSuccess) {
-			log.info("signupFail = {}", signUpSuccess);
-			return ResponseEntity.status(400).build();
-		}
-		log.info("signup success = {}", signUpSuccess);
+		childService.childSignUp(childDto);
 		return ResponseEntity.ok().build();
 	}
 
@@ -202,47 +181,35 @@ public class MemberController {
 	}
 
 	@PostMapping("/childremove")
-	public ResponseEntity childRemove(@Validated @RequestBody Map<String, String> requestBody,
-									  BindingResult bindingResult) {
+	public ResponseEntity<String> childRemove(@Validated @RequestBody Map<String, String> requestBody,
+											  BindingResult bindingResult) {
 
-		String errorMessage = memberService.validateBindingError(bindingResult);
+		String errorMessage = memberUtil.validateBindingError(bindingResult);
 		if (errorMessage != null) {
 			return ResponseEntity.badRequest().body(errorMessage);
 		}
 
 		String childName = requestBody.get("childName");
-
-		Boolean RemoveSuccess = memberService.childRemove(childName);
-		if (!RemoveSuccess) {
-			return ResponseEntity.status(400).build();
-		}
-
-		log.info("아이 삭제 성공!");
+		childService.childRemove(childName);
 		return ResponseEntity.ok().build();
 	}
 
 	@PostMapping("/addhelper")
-	public ResponseEntity addHelper(@Validated @RequestBody MemberRegisterRequest memberRegisterRequest,
-									BindingResult bindingResult) {
-		String errorMessage = memberService.validateBindingError(bindingResult);
+	public ResponseEntity<String> addHelper(@Validated @RequestBody MemberRegisterRequest memberRegisterRequest,
+											BindingResult bindingResult) {
+		String errorMessage = memberUtil.validateBindingError(bindingResult);
 		if (errorMessage != null) {
 			return ResponseEntity.badRequest().body(errorMessage);
 		}
+		memberUtil.addHelper(memberRegisterRequest);
 
-		Boolean addSuccess = memberService.addHelper(memberRegisterRequest);
-
-		if (!addSuccess) {
-			log.info("add Fail = {}", addSuccess);
-			return ResponseEntity.status(400).build();
-		}
-		log.info("add success = {}", addSuccess);
 		return ResponseEntity.ok().build();
 	}
 
 	@PostMapping("/return-nickname")
 	public ResponseEntity<String> returnNickname(@Validated @RequestBody GetIdRequest dto,
 												 BindingResult bindingResult) {
-		String errorMessage = memberService.validateBindingError(bindingResult);
+		String errorMessage = memberUtil.validateBindingError(bindingResult);
 		if (errorMessage != null) {
 			return ResponseEntity.badRequest().body(errorMessage);
 		}
@@ -257,20 +224,14 @@ public class MemberController {
 
 
 	@PostMapping("/helperremove")
-	public ResponseEntity helperRemove(@Validated @RequestBody HelperRemoveRequest dto,
-									   BindingResult bindingResult) {
+	public ResponseEntity<String> helperRemove(@Validated @RequestBody HelperRemoveRequest dto,
+											   BindingResult bindingResult) {
 
-		String errorMessage = memberService.validateBindingError(bindingResult);
+		String errorMessage = memberUtil.validateBindingError(bindingResult);
 		if (errorMessage != null) {
 			return ResponseEntity.badRequest().body(errorMessage);
 		}
-
-		Boolean RemoveSuccess = memberService.helperRemove(dto);
-		if (!RemoveSuccess) {
-			return ResponseEntity.status(400).build();
-		}
-
-		log.info("헬퍼 삭제 성공!");
+		memberUtil.helperRemove(dto);
 		return ResponseEntity.ok().build();
 	}
 
@@ -281,7 +242,7 @@ public class MemberController {
 		String memberId = requestBody.get("memberId");
 
 		log.info(memberId + "의 자식 리스트 반환 ");
-		List<Child> childList = memberService.getChildList(memberId);
+		List<Child> childList = childService.getChildList(memberId);
 		if (childList == null) {
 			log.info("NULL");
 		}
@@ -294,15 +255,10 @@ public class MemberController {
 	public ResponseEntity<Map<String, String>> logout(HttpServletRequest request) {
 		Map<String, String> result = new HashMap<>();
 		String requestToken = request.getHeader("Authorization");
-		try {
-			jwtService.findByToken(requestToken);
-		} catch (Exception e) {
-			return addErrorStatus(result);
-		}
-		if (memberService.logout(requestToken)) {
-			return addOkStatus(result);
-		}
-		return addErrorStatus(result);
+
+		jwtService.findByToken(requestToken);
+		memberService.logout(requestToken);
+		return addOkStatus(result);
 	}
 
 	@PostMapping("/find-member-id")
@@ -315,9 +271,6 @@ public class MemberController {
 		}
 
 		String memberId = memberService.findMemberId(dto);
-		if (memberId == null) {
-			return addErrorStatus(result);
-		}
 
 		result.put("status", "200");
 		result.put("memberId", memberId);
@@ -330,10 +283,7 @@ public class MemberController {
 	@PostMapping("/verification-email-request")
 	public ResponseEntity<Map<String, String>> verificationEmailRequest(@RequestBody EmailRequest dto) {
 		Map<String, String> result = new HashMap<>();
-		if (! memberService.sendCodeToEmail(dto.inputId())) {
-			// 해당 아이디가 존재하지 않음
-			return addErrorStatus(result);
-		}
+		mailService.sendCodeToEmail(dto.inputId());
 		return addOkStatus(result);
 	}
 
@@ -342,7 +292,7 @@ public class MemberController {
 	@PostMapping("/verification-email")
 	public ResponseEntity<Map<String, String>> verificationEmail(@RequestBody VerificationEmailRequest dto) {
 		Map<String, String> result = new HashMap<>();
-		if (!memberService.verifiedCode(dto.inputId(), dto.inputCode())) {
+		if (!mailService.verifiedCode(dto.inputId(), dto.inputCode())) {
 			// 코드가 틀렸다는 메시지와 함께 다시 입력하는 곳으로 리다이렉트
 			return addErrorStatus(result);
 		}
@@ -355,17 +305,13 @@ public class MemberController {
 	@PostMapping("/reset-member-password")
 	public ResponseEntity<Map<String, String>> resetMemberPassword(@RequestBody ResetPasswordRequest dto) {
 		Map<String, String> result = new HashMap<>();
-
-		if (!memberService.resetMemberPassword(dto)) {
-			return addErrorStatus(result);
-		}
+		memberService.resetMemberPassword(dto);
 		return addOkStatus(result);
 	}
 
 	@PostMapping("/find-child-list")
 	public ResponseEntity<Map<String, String>> findChildNameList(@Validated @RequestBody MemberIdRequest dto) {
 		Map<String, String> childList = getChildList(dto.memberId());
-
 		return addOkStatus(childList);
 	}
 
@@ -396,13 +342,8 @@ public class MemberController {
 	@PostMapping("/chose-child")
 	public ResponseEntity<Map<String, String>> choseChildToChangePassword(@RequestBody ResetPasswordRequest dto) {
 		Map<String, String> result = new HashMap<>();
-
-		if (!memberService.resetChildPassword(dto)) {
-			return addErrorStatus(result);
-		}
-
-		result.put("status", "200");
-		return ResponseEntity.ok().build();
+		childService.resetChildPassword(dto);
+		return addOkStatus(result);
 	}
 
 	@PostMapping("/update-coordinate")
@@ -410,24 +351,15 @@ public class MemberController {
 		Map<String, String> result = new HashMap<>();
 
 		if (dto.type().equals("Member")) {
-			if (memberService.updateMemberCoordinate(dto.id(), dto.latitude(), dto.longitude())) {
-				boolean b = batteryService.setMemberBattery(dto.id(), dto.battery());
-				if (!b) {
-					return addErrorStatus(result);
-				}
-				return addOkStatus(result);
-			}
-			return addErrorStatus(result);
-		}
-		if (memberService.updateChildCoordinate(dto.id(), dto.latitude(), dto.longitude())) {
-			boolean b = batteryService.setChildBattery(dto.id(), dto.battery());
-			if (!b) {
-				return addErrorStatus(result);
-			}
-			noticeService.sendNotice(dto.id());
+			coordinateService.updateMemberCoordinate(dto.id(), dto.latitude(), dto.longitude());
+			batteryService.setMemberBattery(dto.id(), dto.battery());
 			return addOkStatus(result);
 		}
-		return addErrorStatus(result);
+		coordinateService.updateChildCoordinate(dto.id(), dto.latitude(), dto.longitude());
+		batteryService.setChildBattery(dto.id(), dto.battery());
+		noticeService.sendNotice(dto.id());
+		return addOkStatus(result);
+
 	}
 
 	@PostMapping("/return-coordinate")
@@ -436,27 +368,17 @@ public class MemberController {
 
 		if (dto.type().equals("Member")) {
 			MemberBattery memberBattery = batteryService.getMemberBattery(dto.id());
-			coordinates = memberService.getMemberCoordinate(dto.id());
+			coordinates = coordinateService.getMemberCoordinate(dto.id());
 
-			if (memberBattery != null) {
-				coordinates.put("battery", (memberBattery.getBatteryValue() * 1.0));
-			}
-			if (coordinates != null) {
-				return ResponseEntity.ok(coordinates);
-			}
+			coordinates.put("battery", (memberBattery.getBatteryValue() * 1.0));
+			return ResponseEntity.ok(coordinates);
 		} else if (dto.type().equals("Child")) {
 			ChildBattery childBattery = batteryService.getChildBattery(dto.id());
-			coordinates = memberService.getChildCoordinate(dto.id());
+			coordinates = coordinateService.getChildCoordinate(dto.id());
 
-			if (childBattery != null) {
-				coordinates.put("battery", (childBattery.getBatteryValue() * 1.0));
-			}
-			if (coordinates != null) {
-				noticeService.sendNotice(dto.id());
-				return ResponseEntity.ok(coordinates);
-			}
-		} else {
-			return ResponseEntity.status(400).build();
+			coordinates.put("battery", (childBattery.getBatteryValue() * 1.0));
+			noticeService.sendNotice(dto.id());
+			return ResponseEntity.ok(coordinates);
 		}
 		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
 	}
@@ -464,7 +386,7 @@ public class MemberController {
 	@PostMapping("/duplicate-check-member")
 	public ResponseEntity<Map<String, String>> duplicateCheckMember(@RequestBody GetIdRequest dto) {
 		Map<String, String> result = new HashMap<>();
-		if (memberService.isPresent(dto.id(), true)) {
+		if (memberUtil.isPresent(dto.id(), true)) {
 			return addErrorStatus(result);
 		}
 
@@ -474,7 +396,7 @@ public class MemberController {
 	@PostMapping("/duplicate-check-child")
 	public ResponseEntity<Map<String, String>> duplicateCheckChild(@RequestBody GetIdRequest dto) {
 		Map<String, String> result = new HashMap<>();
-		if (memberService.isPresent(dto.id(), false)) {
+		if (memberUtil.isPresent(dto.id(), false)) {
 			return addErrorStatus(result);
 		}
 
@@ -485,20 +407,14 @@ public class MemberController {
 	public ResponseEntity<Map<String, String>> addParent(@RequestBody MemberRegisterRequest dto) {
 		Map<String, String> result = new HashMap<>();
 
-		Member foundMember = memberService.findMemberById(dto.parentId());
-		if (foundMember == null) {
-			return addErrorStatus(result);
-		}
+		Member foundMember = memberUtil.findMemberById(dto.parentId());
 
-		Child foundChild = memberService.findChildByChildName(dto.childName());
+		Child foundChild = memberUtil.findChildByName(dto.childName());
 		if (foundChild == null) {
 			return addErrorStatus(result);
 		}
 
-		if (!memberService.addParent(foundMember.getMemberId(), foundChild.getChildName())) {
-			return addErrorStatus(result);
-		}
-
+		memberUtil.addParent(foundMember.getMemberId(), foundChild.getChildName());
 		return addOkStatus(result);
 	}
 
@@ -506,7 +422,7 @@ public class MemberController {
 	@PostMapping("/find-member-by-child")
 	public ResponseEntity<Map<String, Map<String, String>>> findMemberByChild(@RequestBody GetIdRequest dto) {
 		Map<String, Map<String, String>> result = new HashMap<>();
-		Child foundChild = memberService.findChildByChildName(dto.id());
+		Child foundChild = memberUtil.findChildByName(dto.id());
 		if (foundChild == null) {
 			return ResponseEntity.status(400).build();
 		}
@@ -538,10 +454,7 @@ public class MemberController {
 	@PostMapping("/update-nickname")
 	public ResponseEntity<Map<String, String>> updateNickName(@RequestBody UpdateMemberNameRequest dto) {
 		Map<String, String> result = new HashMap<>();
-
-		if (!memberService.updateMemberName(dto)) {
-			return addErrorStatus(result);
-		}
+		memberService.updateMemberName(dto);
 
 		return addOkStatus(result);
 	}
@@ -552,9 +465,9 @@ public class MemberController {
 
 		ArrayList<String> childList;
 		try {
-			childList = memberService.findChildList(memberId);
+			childList = memberUtil.findChildList(memberId);
 		} catch (NoSuchElementException e) {
-			return null;
+			return new HashMap<>();
 		}
 		if (childList != null) {
 			for (int i = 0; i < childList.size(); i++) {
@@ -570,7 +483,7 @@ public class MemberController {
 
 		ArrayList<String> childList;
 		try {
-			childList = memberService.findHelpingList(memberId);
+			childList = memberUtil.findHelpingList(memberId);
 		} catch (NoSuchElementException e) {
 			return null;
 		}
@@ -596,20 +509,5 @@ public class MemberController {
 	private static ResponseEntity<Map<String, String>> addBindingError(Map<String, String> result) {
 		result.put("status", "403");
 		return ResponseEntity.status(403).body(result);
-	}
-
-	public TokenInfo generateTokenOfMember(Member member) {
-		Authentication authentication
-			= new UsernamePasswordAuthenticationToken(member.getMemberId(), member.getPassword(),
-			Collections.singleton(new SimpleGrantedAuthority(Authority.ROLE_MEMBER.toString())));
-		return jwtTokenProvider.generateToken(authentication);
-	}
-
-
-	public TokenInfo generateTokenOfChild(Child child) {
-		Authentication authentication
-			= new UsernamePasswordAuthenticationToken(child.getChildName(), child.getChildPassword(),
-			Collections.singleton(new SimpleGrantedAuthority(Authority.ROLE_CHILD.toString())));
-		return jwtTokenProvider.generateToken(authentication);
 	}
 }

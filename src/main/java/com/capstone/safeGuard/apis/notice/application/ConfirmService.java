@@ -1,15 +1,15 @@
 package com.capstone.safeGuard.apis.notice.application;
 
+import com.capstone.safeGuard.apis.member.application.MemberUtil;
+import com.capstone.safeGuard.apis.notice.presentation.request.notification.FCMNotificationDTO;
 import com.capstone.safeGuard.domain.member.domain.Child;
 import com.capstone.safeGuard.domain.member.domain.Helping;
 import com.capstone.safeGuard.domain.member.domain.Member;
 import com.capstone.safeGuard.domain.member.domain.Parenting;
-import com.capstone.safeGuard.apis.notice.presentation.request.notification.FCMNotificationDTO;
-import com.capstone.safeGuard.apis.member.application.MemberService;
+import com.capstone.safeGuard.domain.member.infrastructure.HelpingRepository;
 import com.capstone.safeGuard.domain.notice.domain.Confirm;
 import com.capstone.safeGuard.domain.notice.domain.ConfirmType;
 import com.capstone.safeGuard.domain.notice.infrastructure.ConfirmRepository;
-import com.capstone.safeGuard.domain.member.infrastructure.HelpingRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,27 +25,24 @@ import java.util.List;
 public class ConfirmService {
 	private final ConfirmRepository confirmRepository;
 	private final FCMService fcmService;
-	private final MemberService memberService;
 	private final HelpingRepository helpingRepository;
+	private final MemberUtil memberUtil;
 
 	@Transactional
-	public boolean sendConfirmToAllMember(ArrayList<Member> foundMemberList, Child foundChild, Helping helping, String confirmType) {
+	public void sendConfirmToAllMember(ArrayList<Member> foundMemberList, Child foundChild, Helping helping, String confirmType) {
 		for (Member member : foundMemberList) {
-			if (!sendConfirmToMember(member, foundChild, helping, confirmType)) {
-				return false;
-			}
+			sendConfirmToMember(member, foundChild, helping, confirmType);
 		}
-		return true;
 	}
 
 	@Transactional
-	public boolean sendConfirmToMember(Member receiverId, Child child, Helping helping, String confirmType) {
+	public void sendConfirmToMember(Member receiverId, Child child, Helping helping, String confirmType) {
 		Confirm confirm = saveConfirm(receiverId, child, helping, confirmType);
 		if (confirm == null) {
-			return false;
+			throw new RuntimeException("Save Confirm Failed");
 		}
 
-		return sendNotificationTo(receiverId.getMemberId(), confirm);
+		sendNotificationTo(receiverId.getMemberId(), confirm);
 	}
 
 	@Transactional
@@ -71,10 +68,10 @@ public class ConfirmService {
 		return confirm;
 	}
 
-	public boolean sendNotificationTo(String receiverId, Confirm confirm) {
+	public void sendNotificationTo(String receiverId, Confirm confirm) {
 		log.info("Confirm send : " + confirm.getConfirmId());
 		FCMNotificationDTO message = makeMessage(receiverId, confirm);
-		return fcmService.SendNotificationByToken(message) != null;
+		fcmService.SendNotificationByToken(message);
 	}
 
 	private FCMNotificationDTO makeMessage(String receiverId, Confirm confirm) {
@@ -93,11 +90,7 @@ public class ConfirmService {
 
 	@Transactional
 	public List<Confirm> findReceivedConfirmByMember(String id) {
-		Member foundMember = memberService.findMemberById(id);
-		if (foundMember == null) {
-			log.info("No member found for id : " + id);
-			return null;
-		}
+		Member foundMember = getMember(id);
 
 		List<Parenting> parentingList = foundMember.getParentingList();
 		if (parentingList == null || parentingList.isEmpty()) {
@@ -115,14 +108,10 @@ public class ConfirmService {
 	}
 
 	public ArrayList<Confirm> findSentConfirmByMember(String id) {
-		Member foundMember = memberService.findMemberById(id);
-		if (foundMember == null) {
-			log.info("No member found for id : " + id);
-			return null;
-		}
+		Member foundMember = getMember(id);
 
 		List<Helping> helpingList = helpingRepository.findAllByHelper(foundMember);
-		if (helpingList == null || helpingList.isEmpty()) {
+		if (helpingList.isEmpty()) {
 			log.info("No helping found for id : " + id);
 			return null;
 		}
@@ -133,5 +122,9 @@ public class ConfirmService {
 		}
 
 		return confirmList;
+	}
+
+	private Member getMember(String id) {
+		return memberUtil.findMemberById(id);
 	}
 }

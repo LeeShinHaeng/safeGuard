@@ -1,7 +1,5 @@
 package com.capstone.safeGuard.apis.notice.presentation;
 
-import static org.springframework.http.HttpStatus.BAD_REQUEST;
-
 import com.capstone.safeGuard.apis.comment.presentation.response.CommentResponseDTO;
 import com.capstone.safeGuard.apis.general.presentation.response.StatusOnlyResponse;
 import com.capstone.safeGuard.apis.notice.application.EmergencyService;
@@ -45,9 +43,7 @@ public class EmergencyController {
 		}
 
 		// 2. 반경 []km 내의 member 들에게 알림을 보냄
-		if (!emergencyService.sendEmergencyToMembers(neighborMemberList, emergencyRequestDto)) {
-			return addErrorStatus();
-		}
+		emergencyService.sendEmergencyToMembers(neighborMemberList, emergencyRequestDto);
 
 		return addOkStatus();
 	}
@@ -56,10 +52,7 @@ public class EmergencyController {
 	public ResponseEntity<Map<String, FindNotificationResponse>> showSentEmergency(@RequestBody MemberIdDTO dto) {
 		List<Emergency> sentEmergencyList = emergencyService.getSentEmergency(dto.memberId());
 
-		HashMap<String, FindNotificationResponse> result = addEmergencyList(sentEmergencyList);
-		if (result == null) {
-			return ResponseEntity.status(400).body(null);
-		}
+		HashMap<String, FindNotificationResponse> result = emergencyService.addEmergencyList(sentEmergencyList);
 
 		return ResponseEntity.ok().body(result);
 	}
@@ -68,29 +61,20 @@ public class EmergencyController {
 	public ResponseEntity<Map<String, FindNotificationResponse>> showReceivedEmergency(@RequestBody MemberIdDTO dto) {
 		List<Emergency> receivedEmergencyList = emergencyService.getReceivedEmergency(dto.memberId());
 
-		HashMap<String, FindNotificationResponse> result = addEmergencyList(receivedEmergencyList);
-		if (result == null) {
-			return ResponseEntity.status(400).body(null);
-		}
+		HashMap<String, FindNotificationResponse> result = emergencyService.addEmergencyList(receivedEmergencyList);
 
 		return ResponseEntity.ok().body(result);
 	}
 
 	@PostMapping("/write-comment")
 	public ResponseEntity<StatusOnlyResponse> writeComment(@RequestBody CommentRequestDTO commentRequestDTO) {
-		if (!emergencyService.writeComment(commentRequestDTO)) {
-			return addErrorStatus();
-		}
-
+		emergencyService.writeComment(commentRequestDTO);
 		return addOkStatus();
 	}
 
 	@PostMapping("/delete-comment")
 	public ResponseEntity<StatusOnlyResponse> deleteComment(@RequestBody CommentIdDTO dto) {
-		if (!emergencyService.deleteComment(dto.commentId())) {
-			return addErrorStatus();
-		}
-
+		emergencyService.deleteComment(dto.commentId());
 		return addOkStatus();
 	}
 
@@ -119,36 +103,7 @@ public class EmergencyController {
 		return ResponseEntity.ok().body(result);
 	}
 
-	private static HashMap<String, FindNotificationResponse> addEmergencyList(List<Emergency> sentEmergencyList) {
-		HashMap<String, FindNotificationResponse> result = new HashMap<>();
-
-		if (sentEmergencyList == null) {
-			return null;
-		}
-
-		for (Emergency emergency : sentEmergencyList) {
-			String format = emergency.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-
-			result.put(emergency.getEmergencyId() + "",
-				FindNotificationResponse.of(
-					"도움 요청",
-					emergency.getContent(),
-					format,
-					emergency.getChild().getChildName(),
-					emergency.getSenderId().getMemberId()
-				)
-			);
-		}
-
-		return result;
-	}
-
 	private static ResponseEntity<StatusOnlyResponse> addOkStatus() {
 		return ResponseEntity.ok(StatusOnlyResponse.of(200));
-	}
-
-	private static ResponseEntity<StatusOnlyResponse> addErrorStatus() {
-		return ResponseEntity.status(BAD_REQUEST)
-			.body(StatusOnlyResponse.of(400));
 	}
 }

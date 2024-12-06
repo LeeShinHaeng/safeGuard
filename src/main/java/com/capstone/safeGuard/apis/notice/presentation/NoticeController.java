@@ -1,7 +1,5 @@
 package com.capstone.safeGuard.apis.notice.presentation;
 
-import static org.springframework.http.HttpStatus.BAD_REQUEST;
-
 import com.capstone.safeGuard.apis.general.presentation.response.StatusOnlyResponse;
 import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.GetIdRequest;
 import com.capstone.safeGuard.apis.notice.application.NoticeService;
@@ -36,9 +34,7 @@ public class NoticeController {
 		HashMap<String, FindNotificationResponse> result = new HashMap<>();
 
 		List<Notice> noticeList = noticeService.findNoticeByMember(dto.id());
-		if (noticeList == null || noticeList.isEmpty()) {
-			return ResponseEntity.status(400).body(result);
-		}
+
 		for (Notice notice : noticeList) {
 			String tmpId;
 			if (notice.getNoticeLevel().equals(NoticeLevel.WARN)) {
@@ -65,14 +61,11 @@ public class NoticeController {
 
 	@PostMapping("/fatal")
 	public ResponseEntity<StatusOnlyResponse> fatal(@RequestBody FatalRequest dto) {
-		Child foundChild = childRepository.findBychildName(dto.childName());
+		Child foundChild = childRepository.findByChildName(dto.childName())
+			.orElseThrow(() -> new RuntimeException("Child not found"));
 
 		List<Parenting> childParentingList = foundChild.getParentingList();
-		if (!noticeService.sendNoticeToMember(childParentingList, foundChild.getChildName(), NoticeLevel.FATAL)) {
-			log.info("send fatal 실패");
-			return ResponseEntity.status(BAD_REQUEST)
-				.body(new StatusOnlyResponse(400));
-		}
+		noticeService.sendNoticeToMember(childParentingList, foundChild.getChildName(), NoticeLevel.FATAL);
 
 		return ResponseEntity.ok(new StatusOnlyResponse(200));
 	}
