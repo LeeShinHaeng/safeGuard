@@ -17,10 +17,8 @@ import com.capstone.safeGuard.domain.map.domain.Coordinate;
 import com.capstone.safeGuard.domain.map.infrastructure.CoordinateRepository;
 import com.capstone.safeGuard.domain.member.domain.Authority;
 import com.capstone.safeGuard.domain.member.domain.Child;
-import com.capstone.safeGuard.domain.member.domain.ChildBattery;
 import com.capstone.safeGuard.domain.member.domain.Helping;
 import com.capstone.safeGuard.domain.member.domain.Member;
-import com.capstone.safeGuard.domain.member.domain.MemberBattery;
 import com.capstone.safeGuard.domain.member.domain.Parenting;
 import com.capstone.safeGuard.domain.member.infrastructure.ChildBatteryRepository;
 import com.capstone.safeGuard.domain.member.infrastructure.ChildRepository;
@@ -79,10 +77,7 @@ public class MemberService {
 
 	@Transactional
 	public Member memberLogin(LoginRequest dto) {
-		// 존재하는 멤버인가
 		Member member = findMemberById(dto.editTextID());
-
-		// ID와 PW가 일치하는가
 		findMemberWithAuthenticate(member, dto.editTextPW());
 
 		// 같은 기기를 사용하는 멤버 모두 FCM 토큰 초기화
@@ -99,10 +94,9 @@ public class MemberService {
 	}
 
 	public void findMemberWithAuthenticate(Member foundMember, String rawPassword) {
-		if (passwordEncoder.matches(rawPassword, foundMember.getPassword())) {
-			return;
+		if (!passwordEncoder.matches(rawPassword, foundMember.getPassword())) {
+			throw new RuntimeException("Password not match");
 		}
-		throw new RuntimeException("Password not match");
 	}
 
 	public Child childLogin(LoginRequest dto) {
@@ -115,10 +109,9 @@ public class MemberService {
 	}
 
 	private void findChildWithAuthenticate(Child foundChild, String rawPassword) {
-		if (passwordEncoder.matches(rawPassword, foundChild.getChildPassword())) {
-			return;
+		if (!passwordEncoder.matches(rawPassword, foundChild.getChildPassword())) {
+			throw new RuntimeException("Password not match");
 		}
-		throw new RuntimeException("Password not match");
 	}
 
 	public void signup(SignUpRequest dto) {
@@ -150,7 +143,6 @@ public class MemberService {
 		Child child = Child.of(childDto, passwordEncoder.encode(childDto.childPassword()));
 		childRepository.save(child);
 
-		// member child 연결
 		String memberId = childDto.memberId();
 		Member member = findMemberById(memberId);
 
@@ -159,7 +151,6 @@ public class MemberService {
 
 	@Transactional
 	public void saveParenting(Member parent, Child child) {
-		// Parenting 엔티티 생성
 		Parenting parenting = new Parenting();
 		parenting.setParent(parent);
 		parenting.setChild(child);
@@ -167,7 +158,6 @@ public class MemberService {
 		parent.getParentingList().add(parenting);
 		child.getParentingList().add(parenting);
 
-		// Parenting 엔티티 저장
 		parentingRepository.save(parenting);
 	}
 
@@ -196,21 +186,80 @@ public class MemberService {
 	@Transactional
 	public void memberRemove(String memberId) {
 		Member member = findMemberById(memberId);
+		cascadeMemberRemove(member);
+		memberRepository.delete(member);
+	}
 
-		ArrayList<String> childNameList = findChildList(memberId);
-		if (!(childNameList == null)) {
+	@Transactional
+	public void cascadeMemberRemove(Member member) {
+		ArrayList<String> childNameList = findChildList(member.getMemberId());
+		if (childNameList != null) {
 			for (String childName : childNameList) {
 				childRemove(childName);
 			}
 		}
 
 		List<Comment> commented = member.getCommented();
-		if (!(commented == null)) {
+		if (commented != null) {
 			commentRepository.deleteAll(commented);
 		}
 
-		List<Helping> helpingList = member.getHelpingList();
-		if (!(helpingList == null)) {
+		deleteParentingList(member.getParentingList());
+		deleteHelpingList(member.getHelpingList());
+		deleteEmergencyList(emergencyRepository.findAllBySenderId(member));
+
+		memberFileRepository.findByMember(member)
+			.ifPresent(memberFileRepository::delete);
+		memberBatteryRepository.findByMemberId(member)
+			.ifPresent(battery -> memberBatteryRepository.deleteById(battery.getMemberBatteryId()));
+	}
+
+	@Transactional
+	public void childRemove(String childName) {
+		Child child = findChildByName(childName);
+		cascadeChildRemove(child);
+		childRepository.delete(child);
+	}
+
+	@Transactional
+	public void cascadeChildRemove(Child child) {
+		List<Emergency> emergencyList = emergencyRepository.findAllByChild(child);
+		deleteEmergencyList(emergencyList);
+
+		ArrayList<Coordinate> coordinateArrayList = coordinateRepository.findAllByChild(child);
+		if (coordinateArrayList != null) {
+			coordinateRepository.deleteAll(coordinateArrayList);
+		}
+
+		ArrayList<Notice> noticeArrayList = noticeRepository.findAllByChild(child);
+		if (noticeArrayList != null) {
+			noticeRepository.deleteAll(noticeArrayList);
+		}
+
+		ArrayList<Confirm> confirmArrayList = confirmRepository.findAllByChild(child);
+		if (confirmArrayList != null) {
+			confirmRepository.deleteAll(confirmArrayList);
+		}
+
+		deleteParentingList(child.getParentingList());
+		deleteHelpingList(child.getHelpingList());
+
+		childFileRepository.findByChild(child)
+			.ifPresent(childFileRepository::delete);
+		childBatteryRepository.findByChildName(child)
+			.ifPresent(battery -> childBatteryRepository.deleteById(battery.getChildBatteryId()));
+	}
+
+	@Transactional
+	public void deleteParentingList(List<Parenting> parentingList) {
+		if (parentingList != null) {
+			parentingRepository.deleteAll(parentingList);
+		}
+	}
+
+	@Transactional
+	public void deleteHelpingList(List<Helping> helpingList) {
+		if (helpingList != null) {
 			for (Helping helping : helpingList) {
 				ArrayList<Confirm> confirmArrayList = confirmRepository.findAllByHelpingId(helping);
 				if (!confirmArrayList.isEmpty()) {
@@ -219,38 +268,11 @@ public class MemberService {
 			}
 			helpingRepository.deleteAll(helpingList);
 		}
-
-		List<Parenting> parentingList = member.getParentingList();
-		if (!(parentingList == null)) {
-			parentingRepository.deleteAll(parentingList);
-		}
-
-		memberFileRepository.findByMember(member)
-			.ifPresent(memberFileRepository::delete);
-
-		List<Emergency> emergencyList = emergencyRepository.findAllBySenderId(member);
-		if (!(emergencyList == null)) {
-			for (Emergency emergency : emergencyList) {
-				List<EmergencyReceiver> emergencyReceiverList = emergencyReceiverRepository.findAllByEmergency(emergency);
-				if (!emergencyReceiverList.isEmpty()) {
-					emergencyReceiverRepository.deleteAll(emergencyReceiverList);
-				}
-			}
-			emergencyRepository.deleteAll(emergencyList);
-		}
-
-		Optional<MemberBattery> memberBattery = memberBatteryRepository.findByMemberId(member);
-		memberBattery.ifPresent(battery -> memberBatteryRepository.deleteById(battery.getMemberBatteryId()));
-
-		memberRepository.delete(member);
 	}
 
 	@Transactional
-	public void childRemove(String childName) {
-		Child selectedChild = findChildByName(childName);
-
-		List<Emergency> emergencyList = emergencyRepository.findAllByChild(selectedChild);
-		if (!(emergencyList == null)) {
+	public void deleteEmergencyList(List<Emergency> emergencyList) {
+		if (emergencyList != null) {
 			for (Emergency emergency : emergencyList) {
 				List<EmergencyReceiver> emergencyReceiverList = emergencyReceiverRepository.findAllByEmergency(emergency);
 				if (!emergencyReceiverList.isEmpty()) {
@@ -259,51 +281,15 @@ public class MemberService {
 			}
 			emergencyRepository.deleteAll(emergencyList);
 		}
-
-		ArrayList<Coordinate> coordinateArrayList = coordinateRepository.findAllByChild(selectedChild);
-		if (!(coordinateArrayList == null)) {
-			coordinateRepository.deleteAll(coordinateArrayList);
-		}
-
-		ArrayList<Notice> noticeArrayList = noticeRepository.findAllByChild(selectedChild);
-		if (!(noticeArrayList == null)) {
-			noticeRepository.deleteAll(noticeArrayList);
-		}
-
-		ArrayList<Confirm> confirmArrayList = confirmRepository.findAllByChild(selectedChild);
-		if (!(confirmArrayList == null)) {
-			confirmRepository.deleteAll(confirmArrayList);
-		}
-
-		List<Parenting> parentingList = selectedChild.getParentingList();
-		if (!(parentingList == null)) {
-			parentingRepository.deleteAll(parentingList);
-		}
-
-		List<Helping> helpingList = selectedChild.getHelpingList();
-		if (!(helpingList == null)) {
-			helpingRepository.deleteAll(helpingList);
-		}
-
-		childFileRepository.findByChild(selectedChild)
-			.ifPresent(childFileRepository::delete);
-
-		Optional<ChildBattery> childBattery = childBatteryRepository.findByChildName(selectedChild);
-		childBattery.ifPresent(battery -> childBatteryRepository.deleteById(battery.getChildBatteryId()));
-
-		childRepository.delete(selectedChild);
 	}
 
 	@Transactional
 	public void helperRemove(HelperRemoveRequest dto) {
 		Helping helping = helpingRepository.findByHelperMemberIdAndChildChildName(dto.memberId(), dto.childName())
-			.orElseThrow(
-				() -> new IllegalStateException("helping Not Found")
-			);
-
+			.orElseThrow(() -> new IllegalStateException("helping Not Found"));
 		ArrayList<Confirm> confirmList = confirmRepository.findAllByHelpingId(helping);
-		confirmRepository.deleteAll(confirmList);
 
+		confirmRepository.deleteAll(confirmList);
 		helpingRepository.delete(helping);
 	}
 
@@ -339,7 +325,7 @@ public class MemberService {
 		Member foundMember = memberRepository.findByEmail(dto.email());
 
 		if (foundMember == null || (!foundMember.getName().equals(dto.name()))) {
-			return null;
+			throw new IllegalStateException("Member not found");
 		}
 		return foundMember.getMemberId();
 	}

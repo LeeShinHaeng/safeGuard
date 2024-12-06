@@ -25,7 +25,7 @@ public class MailService {
 
 	private static final int emailAuthCodeDuration = 1800; // 30 * 60 * 1000 == 30분
 
-	public boolean sendCodeToEmail(String memberId) {
+	public void sendCodeToEmail(String memberId) {
 		Member foundMember = findMemberById(memberId);
 
 		String address = foundMember.getEmail();
@@ -36,7 +36,6 @@ public class MailService {
 		Optional<EmailAuthCode> foundCode = emailAuthCodeRepository.findById(memberId);
 		foundCode.ifPresent(emailAuthCodeRepository::delete);
 		emailAuthCodeRepository.save(new EmailAuthCode(address, authCode, LocalDateTime.now()));
-		return true;
 	}
 
 	private String createCode() {

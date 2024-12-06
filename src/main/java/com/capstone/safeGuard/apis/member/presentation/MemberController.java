@@ -267,9 +267,6 @@ public class MemberController {
 		}
 
 		String memberId = memberService.findMemberId(dto);
-		if (memberId == null) {
-			return addErrorStatus(result);
-		}
 
 		result.put("status", "200");
 		result.put("memberId", memberId);
@@ -282,10 +279,7 @@ public class MemberController {
 	@PostMapping("/verification-email-request")
 	public ResponseEntity<Map<String, String>> verificationEmailRequest(@RequestBody EmailRequest dto) {
 		Map<String, String> result = new HashMap<>();
-		if (!mailService.sendCodeToEmail(dto.inputId())) {
-			// 해당 아이디가 존재하지 않음
-			return addErrorStatus(result);
-		}
+		mailService.sendCodeToEmail(dto.inputId());
 		return addOkStatus(result);
 	}
 
