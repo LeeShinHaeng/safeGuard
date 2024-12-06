@@ -1,10 +1,7 @@
 package com.capstone.safeGuard.apis.notice.presentation.request.fatal;
 
-import lombok.Getter;
-import lombok.Setter;
+public record FatalRequest(
+	String childName
+) {
 
-@Getter
-@Setter
-public class FatalRequest {
-    private String childName;
 }

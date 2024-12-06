@@ -5,14 +5,13 @@ import com.capstone.safeGuard.domain.member.domain.Member;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface HelpingRepository extends JpaRepository<Helping, Long> {
-    
-    void delete(Helping helping);
 
-    Helping findByHelper(Member helper);
+	void delete(Helping helping);
 
-    Helping findByHelper_MemberIdAndChild_ChildName(String memberId, String childName);
+	Optional<Helping> findByHelperMemberIdAndChildChildName(String memberId, String childName);
 
-    List<Helping> findAllByHelper(Member foundMember);
+	List<Helping> findAllByHelper(Member foundMember);
 }

@@ -1,24 +1,32 @@
 package com.capstone.safeGuard.apis.notice.presentation.response;
 
 import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
 
-@Getter
-@Setter
-public class FindNotificationResponse {
-    private String title;
-    private String content;
-    private String date;
-    private String child;
-    private String senderId;
+@Builder
+public record FindNotificationResponse(
+	String title,
+	String content,
+	String date,
+	String child,
+	String senderId
+) {
+	public static FindNotificationResponse of(String title, String content, String date, String child, String senderId) {
+		return FindNotificationResponse.builder()
+			.title(title)
+			.content(content)
+			.date(date)
+			.child(child)
+			.senderId(senderId)
+			.build();
+	}
 
-    @Builder
-    public FindNotificationResponse(String title, String content, String date, String child, String senderId) {
-        this.title = title;
-        this.content = content;
-        this.date = date;
-        this.child = child;
-        this.senderId = senderId;
-    }
+	public static FindNotificationResponse of(String title, String content, String date, String child) {
+		return FindNotificationResponse.builder()
+			.title(title)
+			.content(content)
+			.date(date)
+			.child(child)
+			.senderId(null)
+			.build();
+	}
 }
