@@ -1,6 +1,6 @@
 package com.capstone.safeGuard.apis.notice.application;
 
-import com.capstone.safeGuard.apis.member.application.MemberService;
+import com.capstone.safeGuard.apis.member.application.MemberUtil;
 import com.capstone.safeGuard.apis.notice.presentation.request.notification.FCMNotificationDTO;
 import com.capstone.safeGuard.domain.member.domain.Child;
 import com.capstone.safeGuard.domain.member.domain.Helping;
@@ -25,8 +25,8 @@ import java.util.List;
 public class ConfirmService {
 	private final ConfirmRepository confirmRepository;
 	private final FCMService fcmService;
-	private final MemberService memberService;
 	private final HelpingRepository helpingRepository;
+	private final MemberUtil memberUtil;
 
 	@Transactional
 	public void sendConfirmToAllMember(ArrayList<Member> foundMemberList, Child foundChild, Helping helping, String confirmType) {
@@ -125,6 +125,6 @@ public class ConfirmService {
 	}
 
 	private Member getMember(String id) {
-		return memberService.findMemberById(id);
+		return memberUtil.findMemberById(id);
 	}
 }

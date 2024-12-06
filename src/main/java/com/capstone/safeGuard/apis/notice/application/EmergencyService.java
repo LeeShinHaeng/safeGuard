@@ -1,6 +1,7 @@
 package com.capstone.safeGuard.apis.notice.application;
 
 import com.capstone.safeGuard.apis.member.application.MemberService;
+import com.capstone.safeGuard.apis.member.application.MemberUtil;
 import com.capstone.safeGuard.apis.notice.presentation.request.emergency.CommentRequestDTO;
 import com.capstone.safeGuard.apis.notice.presentation.request.emergency.EmergencyRequestDTO;
 import com.capstone.safeGuard.apis.notice.presentation.request.notification.FCMNotificationDTO;
@@ -33,6 +34,7 @@ public class EmergencyService {
 	private final CommentRepository commentRepository;
 	private final EmergencyReceiverRepository emergencyReceiverRepository;
 	private final FCMService fcmService;
+	private final MemberUtil memberUtil;
 
 
 	@Transactional
@@ -47,7 +49,7 @@ public class EmergencyService {
 	public ArrayList<String> getNeighborMembers(EmergencyRequestDTO dto, int distance) {
 		ArrayList<String> memberIdList = new ArrayList<>();
 		ArrayList<Member> allMember = memberService.findAllMember();
-		Child foundChild = memberService.findChildByChildName(dto.childName());
+		Child foundChild = memberUtil.findChildByName(dto.childName());
 
 		for (Member member : allMember) {
 			if (isNeighbor(foundChild.getLatitude(), foundChild.getLongitude(), member.getLatitude(), member.getLongitude(), distance)) {
@@ -80,8 +82,8 @@ public class EmergencyService {
 	@Transactional
 	public Emergency saveEmergency(String receiverId, EmergencyRequestDTO dto) {
 		// Emergency table에 저장
-		Member member = memberService.findMemberById(dto.senderId());
-		Child child = memberService.findChildByChildName(dto.childName());
+		Member member = memberUtil.findMemberById(dto.senderId());
+		Child child = memberUtil.findChildByName(dto.childName());
 		String content = "피보호자 이름 : " + dto.childName();
 
 		Emergency emergency = dto.dtoToDomain(member, child, content);
@@ -109,7 +111,7 @@ public class EmergencyService {
 	}
 
 	public List<Emergency> getSentEmergency(String memberId) {
-		Member foundMember = memberService.findMemberById(memberId);
+		Member foundMember = memberUtil.findMemberById(memberId);
 		return emergencyRepository.findAllBySenderId(foundMember);
 	}
 
@@ -125,7 +127,7 @@ public class EmergencyService {
 
 	@Transactional
 	public void writeComment(CommentRequestDTO commentRequestDTO) {
-		Member foundMember = memberService.findMemberById(commentRequestDTO.commentatorId());
+		Member foundMember = memberUtil.findMemberById(commentRequestDTO.commentatorId());
 		Emergency foundEmergency = getEmergencyDetail(commentRequestDTO.emergencyId());
 
 		Comment comment = Comment.builder()

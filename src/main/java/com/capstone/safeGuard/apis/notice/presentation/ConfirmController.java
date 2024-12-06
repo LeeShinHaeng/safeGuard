@@ -1,7 +1,7 @@
 package com.capstone.safeGuard.apis.notice.presentation;
 
 import com.capstone.safeGuard.apis.general.presentation.response.StatusOnlyResponse;
-import com.capstone.safeGuard.apis.member.application.MemberService;
+import com.capstone.safeGuard.apis.member.application.MemberUtil;
 import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.GetIdRequest;
 import com.capstone.safeGuard.apis.notice.application.ConfirmService;
 import com.capstone.safeGuard.apis.notice.presentation.request.confirm.SendConfirmRequest;
@@ -30,14 +30,14 @@ import java.util.Optional;
 @RequiredArgsConstructor
 @Slf4j
 public class ConfirmController {
-	private final MemberService memberService;
 	private final MemberRepository memberRepository;
 	private final ConfirmService confirmService;
+	private final MemberUtil memberUtil;
 
 	@PostMapping("/send-confirm")
 	public ResponseEntity<StatusOnlyResponse> sendConfirm(@RequestBody SendConfirmRequest dto) {
 		// 1. chidname 확인
-		Child foundChild = memberService.findChildByChildName(dto.childName());
+		Child foundChild = memberUtil.findChildByName(dto.childName());
 		if (foundChild == null) {
 			return addErrorStatus();
 		}
@@ -48,7 +48,7 @@ public class ConfirmController {
 		}
 
 		// 2. 해당 child의 member에게 전송
-		ArrayList<Member> foundMemberList = memberService.findAllParentByChild(foundChild);
+		ArrayList<Member> foundMemberList = memberUtil.findAllParentByChild(foundChild);
 		if (foundMemberList == null) {
 			return addErrorStatus();
 		}

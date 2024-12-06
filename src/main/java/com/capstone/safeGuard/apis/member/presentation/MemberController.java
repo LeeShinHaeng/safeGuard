@@ -2,9 +2,11 @@ package com.capstone.safeGuard.apis.member.presentation;
 
 import com.capstone.safeGuard.apis.map.application.CoordinateService;
 import com.capstone.safeGuard.apis.member.application.BatteryService;
+import com.capstone.safeGuard.apis.member.application.ChildService;
 import com.capstone.safeGuard.apis.member.application.JwtService;
 import com.capstone.safeGuard.apis.member.application.MailService;
 import com.capstone.safeGuard.apis.member.application.MemberService;
+import com.capstone.safeGuard.apis.member.application.MemberUtil;
 import com.capstone.safeGuard.apis.member.presentation.request.findidandresetpw.EmailRequest;
 import com.capstone.safeGuard.apis.member.presentation.request.findidandresetpw.FindMemberIdRequest;
 import com.capstone.safeGuard.apis.member.presentation.request.findidandresetpw.MemberIdRequest;
@@ -61,6 +63,8 @@ public class MemberController {
 	private final NoticeService noticeService;
 	private final MailService mailService;
 	private final CoordinateService coordinateService;
+	private final ChildService childService;
+	private final MemberUtil memberUtil;
 
 	@GetMapping("/login")
 	public String showLoginForm() {
@@ -91,7 +95,7 @@ public class MemberController {
 		}
 		// Child 타입으로 로그인 하는 경우
 		else {
-			Child childLogin = memberService.childLogin(dto);
+			Child childLogin = childService.childLogin(dto);
 
 			// child가 존재하는 경우 token을 전달
 			TokenInfo tokenInfo = memberService.generateTokenOfChild(childLogin);
@@ -125,7 +129,7 @@ public class MemberController {
 
 		HashMap<String, String> result = new HashMap<>();
 
-		String errorMessage = memberService.validateBindingError(bindingResult);
+		String errorMessage = memberUtil.validateBindingError(bindingResult);
 		if (errorMessage != null) {
 			return addErrorStatus(result);
 		}
@@ -142,7 +146,7 @@ public class MemberController {
 	@PostMapping("/memberremove")
 	public ResponseEntity<?> memberRemove(@Validated @RequestBody MemberIdRequest dto, BindingResult bindingResult) {
 
-		String errorMessage = memberService.validateBindingError(bindingResult);
+		String errorMessage = memberUtil.validateBindingError(bindingResult);
 		if (errorMessage != null) {
 			return ResponseEntity.badRequest().body(errorMessage);
 		}
@@ -162,12 +166,12 @@ public class MemberController {
 											  BindingResult bindingResult) {
 		log.info("childSignup 실행");
 
-		String errorMessage = memberService.validateBindingError(bindingResult);
+		String errorMessage = memberUtil.validateBindingError(bindingResult);
 		if (errorMessage != null) {
 			return ResponseEntity.badRequest().body(errorMessage);
 		}
 
-		memberService.childSignUp(childDto);
+		childService.childSignUp(childDto);
 		return ResponseEntity.ok().build();
 	}
 
@@ -180,24 +184,24 @@ public class MemberController {
 	public ResponseEntity<String> childRemove(@Validated @RequestBody Map<String, String> requestBody,
 											  BindingResult bindingResult) {
 
-		String errorMessage = memberService.validateBindingError(bindingResult);
+		String errorMessage = memberUtil.validateBindingError(bindingResult);
 		if (errorMessage != null) {
 			return ResponseEntity.badRequest().body(errorMessage);
 		}
 
 		String childName = requestBody.get("childName");
-		memberService.childRemove(childName);
+		childService.childRemove(childName);
 		return ResponseEntity.ok().build();
 	}
 
 	@PostMapping("/addhelper")
 	public ResponseEntity<String> addHelper(@Validated @RequestBody MemberRegisterRequest memberRegisterRequest,
 											BindingResult bindingResult) {
-		String errorMessage = memberService.validateBindingError(bindingResult);
+		String errorMessage = memberUtil.validateBindingError(bindingResult);
 		if (errorMessage != null) {
 			return ResponseEntity.badRequest().body(errorMessage);
 		}
-		memberService.addHelper(memberRegisterRequest);
+		memberUtil.addHelper(memberRegisterRequest);
 
 		return ResponseEntity.ok().build();
 	}
@@ -205,7 +209,7 @@ public class MemberController {
 	@PostMapping("/return-nickname")
 	public ResponseEntity<String> returnNickname(@Validated @RequestBody GetIdRequest dto,
 												 BindingResult bindingResult) {
-		String errorMessage = memberService.validateBindingError(bindingResult);
+		String errorMessage = memberUtil.validateBindingError(bindingResult);
 		if (errorMessage != null) {
 			return ResponseEntity.badRequest().body(errorMessage);
 		}
@@ -223,11 +227,11 @@ public class MemberController {
 	public ResponseEntity<String> helperRemove(@Validated @RequestBody HelperRemoveRequest dto,
 											   BindingResult bindingResult) {
 
-		String errorMessage = memberService.validateBindingError(bindingResult);
+		String errorMessage = memberUtil.validateBindingError(bindingResult);
 		if (errorMessage != null) {
 			return ResponseEntity.badRequest().body(errorMessage);
 		}
-		memberService.helperRemove(dto);
+		memberUtil.helperRemove(dto);
 		return ResponseEntity.ok().build();
 	}
 
@@ -238,7 +242,7 @@ public class MemberController {
 		String memberId = requestBody.get("memberId");
 
 		log.info(memberId + "의 자식 리스트 반환 ");
-		List<Child> childList = memberService.getChildList(memberId);
+		List<Child> childList = childService.getChildList(memberId);
 		if (childList == null) {
 			log.info("NULL");
 		}
@@ -338,7 +342,7 @@ public class MemberController {
 	@PostMapping("/chose-child")
 	public ResponseEntity<Map<String, String>> choseChildToChangePassword(@RequestBody ResetPasswordRequest dto) {
 		Map<String, String> result = new HashMap<>();
-		memberService.resetChildPassword(dto);
+		childService.resetChildPassword(dto);
 		return addOkStatus(result);
 	}
 
@@ -382,7 +386,7 @@ public class MemberController {
 	@PostMapping("/duplicate-check-member")
 	public ResponseEntity<Map<String, String>> duplicateCheckMember(@RequestBody GetIdRequest dto) {
 		Map<String, String> result = new HashMap<>();
-		if (memberService.isPresent(dto.id(), true)) {
+		if (memberUtil.isPresent(dto.id(), true)) {
 			return addErrorStatus(result);
 		}
 
@@ -392,7 +396,7 @@ public class MemberController {
 	@PostMapping("/duplicate-check-child")
 	public ResponseEntity<Map<String, String>> duplicateCheckChild(@RequestBody GetIdRequest dto) {
 		Map<String, String> result = new HashMap<>();
-		if (memberService.isPresent(dto.id(), false)) {
+		if (memberUtil.isPresent(dto.id(), false)) {
 			return addErrorStatus(result);
 		}
 
@@ -403,14 +407,14 @@ public class MemberController {
 	public ResponseEntity<Map<String, String>> addParent(@RequestBody MemberRegisterRequest dto) {
 		Map<String, String> result = new HashMap<>();
 
-		Member foundMember = memberService.findMemberById(dto.parentId());
+		Member foundMember = memberUtil.findMemberById(dto.parentId());
 
-		Child foundChild = memberService.findChildByChildName(dto.childName());
+		Child foundChild = memberUtil.findChildByName(dto.childName());
 		if (foundChild == null) {
 			return addErrorStatus(result);
 		}
 
-		memberService.addParent(foundMember.getMemberId(), foundChild.getChildName());
+		memberUtil.addParent(foundMember.getMemberId(), foundChild.getChildName());
 		return addOkStatus(result);
 	}
 
@@ -418,7 +422,7 @@ public class MemberController {
 	@PostMapping("/find-member-by-child")
 	public ResponseEntity<Map<String, Map<String, String>>> findMemberByChild(@RequestBody GetIdRequest dto) {
 		Map<String, Map<String, String>> result = new HashMap<>();
-		Child foundChild = memberService.findChildByChildName(dto.id());
+		Child foundChild = memberUtil.findChildByName(dto.id());
 		if (foundChild == null) {
 			return ResponseEntity.status(400).build();
 		}
@@ -461,7 +465,7 @@ public class MemberController {
 
 		ArrayList<String> childList;
 		try {
-			childList = memberService.findChildList(memberId);
+			childList = memberUtil.findChildList(memberId);
 		} catch (NoSuchElementException e) {
 			return new HashMap<>();
 		}
@@ -479,7 +483,7 @@ public class MemberController {
 
 		ArrayList<String> childList;
 		try {
-			childList = memberService.findHelpingList(memberId);
+			childList = memberUtil.findHelpingList(memberId);
 		} catch (NoSuchElementException e) {
 			return null;
 		}

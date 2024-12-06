@@ -1,6 +1,6 @@
 package com.capstone.safeGuard.apis.notice.application;
 
-import com.capstone.safeGuard.apis.member.application.MemberService;
+import com.capstone.safeGuard.apis.member.application.MemberUtil;
 import com.capstone.safeGuard.apis.notice.presentation.request.notification.FCMNotificationDTO;
 import com.capstone.safeGuard.domain.map.domain.Coordinate;
 import com.capstone.safeGuard.domain.map.infrastructure.CoordinateRepository;
@@ -25,19 +25,19 @@ import java.util.List;
 public class NoticeService {
 	private final NoticeRepository noticeRepository;
 	private final FCMService fcmService;
-	private final MemberService memberService;
 	private final CoordinateRepository coordinateRepository;
+	private final MemberUtil memberUtil;
 
 	@Transactional
 	public Notice createNotice(String receiverId, String childName, NoticeLevel noticeLevel) {
-		Member member = memberService.findMemberById(receiverId);
+		Member member = memberUtil.findMemberById(receiverId);
 
 		Notice notice = new Notice();
 		notice.setTitle(noticeLevel.name());
 		notice.setContent("피보호자 이름 : " + childName);
 		notice.setReceiverId(member.getMemberId());
 		notice.setNoticeLevel(noticeLevel);
-		notice.setChild(memberService.findChildByChildName(childName));
+		notice.setChild(memberUtil.findChildByName(childName));
 		notice.setCreatedAt(LocalDateTime.now());
 
 		return noticeRepository.save(notice);
@@ -45,7 +45,7 @@ public class NoticeService {
 
 	@Transactional
 	public void sendNotice(String childName) {
-		Child foundChild = memberService.findChildByChildName(childName);
+		Child foundChild = memberUtil.findChildByName(childName);
 
 		String currentStatus = getCurrentStatus(foundChild);
 		String lastStatus = "일반구역";
@@ -153,7 +153,7 @@ public class NoticeService {
 	}
 
 	public List<Notice> findNoticeByMember(String memberId) {
-		memberService.findMemberById(memberId);
+		memberUtil.findMemberById(memberId);
 
 		return noticeRepository.findAllByReceiverId(memberId);
 	}
