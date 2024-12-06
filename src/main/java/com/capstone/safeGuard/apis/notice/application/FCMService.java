@@ -18,14 +18,13 @@ public class FCMService {
 	private final FirebaseMessaging firebaseMessaging;
 	private final MemberRepository memberRepository;
 
-	public boolean SendNotificationByToken(FCMNotificationDTO dto) {
+	public void SendNotificationByToken(FCMNotificationDTO dto) {
 		log.info("Sending notification to FCM");
 		Member foundMember = memberRepository.findById(dto.receiverId())
 			.orElseThrow(() -> new RuntimeException("Member not found!"));
 
 		if (foundMember.getFcmToken() == null) {
-			log.info("FCM 토큰이 없음. 해당 멤버를 건너뜀");
-			return false;
+			throw new RuntimeException("FCM Token not found");
 		}
 
 		Notification notification = Notification.builder()
@@ -40,12 +39,8 @@ public class FCMService {
 
 		try {
 			firebaseMessaging.send(message);
-			log.info("Sent notification 성공!!");
-			return true;
 		} catch (FirebaseMessagingException e) {
-			log.info(e.getMessage());
-			log.info("FIREBASE 문제");
-			return false;
+			throw new RuntimeException("Failed to send notification because of FCM Internal Error", e);
 		}
 	}
 }

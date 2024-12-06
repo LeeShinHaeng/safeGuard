@@ -40,9 +40,7 @@ public class EmergencyService {
 		for (String memberId : neighborMemberList) {
 			// 3. 알림을 전송 및 저장
 			Emergency emergency = saveEmergency(memberId, dto);
-			if (!sendNotificationTo(memberId, emergency)) {
-				throw new RuntimeException("Send Notification Failed");
-			}
+			sendNotificationTo(memberId, emergency);
 		}
 	}
 
@@ -99,9 +97,9 @@ public class EmergencyService {
 	}
 
 	@Transactional
-	public boolean sendNotificationTo(String receiverId, Emergency emergency) {
+	public void sendNotificationTo(String receiverId, Emergency emergency) {
 		FCMNotificationDTO message = makeMessage(receiverId, emergency);
-		return fcmService.SendNotificationByToken(message);
+		fcmService.SendNotificationByToken(message);
 	}
 
 	private FCMNotificationDTO makeMessage(String receiverId, Emergency emergency) {
@@ -126,7 +124,7 @@ public class EmergencyService {
 	}
 
 	@Transactional
-	public boolean writeComment(CommentRequestDTO commentRequestDTO) {
+	public void writeComment(CommentRequestDTO commentRequestDTO) {
 		Member foundMember = memberService.findMemberById(commentRequestDTO.commentatorId());
 		Emergency foundEmergency = getEmergencyDetail(commentRequestDTO.emergencyId());
 
@@ -138,8 +136,6 @@ public class EmergencyService {
 
 		commentRepository.save(comment);
 		foundEmergency.commentList.add(comment);
-
-		return true;
 	}
 
 

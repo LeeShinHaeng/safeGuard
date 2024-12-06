@@ -172,7 +172,7 @@ public class MemberService {
 	}
 
 	@Transactional
-	public Boolean addHelper(MemberRegisterRequest memberRegisterRequest) {
+	public void addHelper(MemberRegisterRequest memberRegisterRequest) {
 		Helping helping = new Helping();
 		String childName = memberRegisterRequest.childName();
 		String memberId = memberRegisterRequest.parentId();
@@ -183,7 +183,7 @@ public class MemberService {
 		List<Helping> foundHelpingList = helpingRepository.findAllByHelper(findMember);
 		for (Helping foundHelping : foundHelpingList) {
 			if (foundHelping.getChild().equals(selectedChild)) {
-				return false;
+				return;
 			}
 		}
 
@@ -191,12 +191,10 @@ public class MemberService {
 		helping.setChild(selectedChild);
 
 		helpingRepository.save(helping);
-
-		return true;
 	}
 
 	@Transactional
-	public Boolean memberRemove(String memberId) {
+	public void memberRemove(String memberId) {
 		Member member = findMemberById(memberId);
 
 		ArrayList<String> childNameList = findChildList(memberId);
@@ -245,11 +243,10 @@ public class MemberService {
 		memberBattery.ifPresent(battery -> memberBatteryRepository.deleteById(battery.getMemberBatteryId()));
 
 		memberRepository.delete(member);
-		return true;
 	}
 
 	@Transactional
-	public Boolean childRemove(String childName) {
+	public void childRemove(String childName) {
 		Child selectedChild = findChildByName(childName);
 
 		List<Emergency> emergencyList = emergencyRepository.findAllByChild(selectedChild);
@@ -295,26 +292,23 @@ public class MemberService {
 		childBattery.ifPresent(battery -> childBatteryRepository.deleteById(battery.getChildBatteryId()));
 
 		childRepository.delete(selectedChild);
-		return true;
 	}
 
 	@Transactional
-	public Boolean helperRemove(HelperRemoveRequest dto) {
-		Helping helping = helpingRepository.findByHelperMemberIdAndChildChildName(dto.memberId(), dto.childName());
-		if (helping == null) {
-			return false;
-		}
+	public void helperRemove(HelperRemoveRequest dto) {
+		Helping helping = helpingRepository.findByHelperMemberIdAndChildChildName(dto.memberId(), dto.childName())
+			.orElseThrow(
+				() -> new IllegalStateException("helping Not Found")
+			);
 
 		ArrayList<Confirm> confirmList = confirmRepository.findAllByHelpingId(helping);
 		confirmRepository.deleteAll(confirmList);
 
 		helpingRepository.delete(helping);
-		return true;
 	}
 
-	public boolean logout(String accessToken) {
+	public void logout(String accessToken) {
 		jwtService.toBlackList(accessToken);
-		return true;
 	}
 
 	public List<Child> getChildList(String memberId) {
@@ -351,11 +345,9 @@ public class MemberService {
 	}
 
 	@Transactional
-	public boolean resetMemberPassword(ResetPasswordRequest dto) {
+	public void resetMemberPassword(ResetPasswordRequest dto) {
 		Member foundMember = findMemberById(dto.id());
-
 		foundMember.setPassword(passwordEncoder.encode(dto.newPassword()));
-		return true;
 	}
 
 	@Transactional
@@ -376,10 +368,9 @@ public class MemberService {
 	}
 
 	@Transactional
-	public boolean resetChildPassword(ResetPasswordRequest dto) {
+	public void resetChildPassword(ResetPasswordRequest dto) {
 		Child foundChild = findChildByName(dto.id());
 		foundChild.setChildPassword(passwordEncoder.encode(dto.newPassword()));
-		return true;
 	}
 
 	public ArrayList<Member> findAllMember() {
@@ -423,25 +414,19 @@ public class MemberService {
 	}
 
 	@Transactional
-	public boolean addParent(String memberId, String childName) {
+	public void addParent(String memberId, String childName) {
 		Member foundMember = findMemberById(memberId);
 
-		Child foundChild = childRepository.findByChildName(childName)
-			.orElse(null);
-		if (foundChild == null) {
-			return false;
-		}
+		Child foundChild = findChildByChildName(childName);
 
 		List<Parenting> foundParentingList = parentingRepository.findAllByParent(foundMember);
 		for (Parenting foundParenting : foundParentingList) {
 			if (foundParenting.getChild().equals(foundChild)) {
-				return false;
+				return;
 			}
 		}
 
 		saveParenting(foundMember, foundChild);
-
-		return true;
 	}
 
 	public ArrayList<Member> findAllParentByChild(Child foundChild) {
@@ -459,10 +444,9 @@ public class MemberService {
 	}
 
 	@Transactional
-	public boolean updateMemberName(UpdateMemberNameRequest dto) {
+	public void updateMemberName(UpdateMemberNameRequest dto) {
 		Member foundMember = findMemberById(dto.userID());
 		foundMember.setName(dto.nickname());
-		return true;
 	}
 
 	private Child findChildByName(String name) {

@@ -1,7 +1,5 @@
 package com.capstone.safeGuard.apis.notice.presentation;
 
-import static org.springframework.http.HttpStatus.BAD_REQUEST;
-
 import com.capstone.safeGuard.apis.comment.presentation.response.CommentResponseDTO;
 import com.capstone.safeGuard.apis.general.presentation.response.StatusOnlyResponse;
 import com.capstone.safeGuard.apis.notice.application.EmergencyService;
@@ -70,10 +68,7 @@ public class EmergencyController {
 
 	@PostMapping("/write-comment")
 	public ResponseEntity<StatusOnlyResponse> writeComment(@RequestBody CommentRequestDTO commentRequestDTO) {
-		if (!emergencyService.writeComment(commentRequestDTO)) {
-			return addErrorStatus();
-		}
-
+		emergencyService.writeComment(commentRequestDTO);
 		return addOkStatus();
 	}
 
@@ -108,13 +103,7 @@ public class EmergencyController {
 		return ResponseEntity.ok().body(result);
 	}
 
-
 	private static ResponseEntity<StatusOnlyResponse> addOkStatus() {
 		return ResponseEntity.ok(StatusOnlyResponse.of(200));
-	}
-
-	private static ResponseEntity<StatusOnlyResponse> addErrorStatus() {
-		return ResponseEntity.status(BAD_REQUEST)
-			.body(StatusOnlyResponse.of(400));
 	}
 }

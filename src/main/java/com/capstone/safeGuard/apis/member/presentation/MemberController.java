@@ -148,13 +148,7 @@ public class MemberController {
 		}
 
 		String memberId = dto.memberId();
-
-		Boolean removeSuccess = memberService.memberRemove(memberId);
-		if (!removeSuccess) {
-			return ResponseEntity.status(400).build();
-		}
-
-		log.info("멤버 삭제 성공!");
+		memberService.memberRemove(memberId);
 		return ResponseEntity.ok().build();
 	}
 
@@ -192,13 +186,7 @@ public class MemberController {
 		}
 
 		String childName = requestBody.get("childName");
-
-		Boolean RemoveSuccess = memberService.childRemove(childName);
-		if (!RemoveSuccess) {
-			return ResponseEntity.status(400).build();
-		}
-
-		log.info("아이 삭제 성공!");
+		memberService.childRemove(childName);
 		return ResponseEntity.ok().build();
 	}
 
@@ -209,14 +197,8 @@ public class MemberController {
 		if (errorMessage != null) {
 			return ResponseEntity.badRequest().body(errorMessage);
 		}
+		memberService.addHelper(memberRegisterRequest);
 
-		Boolean addSuccess = memberService.addHelper(memberRegisterRequest);
-
-		if (!addSuccess) {
-			log.info("add Fail = {}", addSuccess);
-			return ResponseEntity.status(400).build();
-		}
-		log.info("add success = {}", addSuccess);
 		return ResponseEntity.ok().build();
 	}
 
@@ -245,13 +227,7 @@ public class MemberController {
 		if (errorMessage != null) {
 			return ResponseEntity.badRequest().body(errorMessage);
 		}
-
-		Boolean RemoveSuccess = memberService.helperRemove(dto);
-		if (!RemoveSuccess) {
-			return ResponseEntity.status(400).build();
-		}
-
-		log.info("헬퍼 삭제 성공!");
+		memberService.helperRemove(dto);
 		return ResponseEntity.ok().build();
 	}
 
@@ -277,11 +253,8 @@ public class MemberController {
 		String requestToken = request.getHeader("Authorization");
 
 		jwtService.findByToken(requestToken);
-
-		if (memberService.logout(requestToken)) {
-			return addOkStatus(result);
-		}
-		return addErrorStatus(result);
+		memberService.logout(requestToken);
+		return addOkStatus(result);
 	}
 
 	@PostMapping("/find-member-id")
@@ -334,10 +307,7 @@ public class MemberController {
 	@PostMapping("/reset-member-password")
 	public ResponseEntity<Map<String, String>> resetMemberPassword(@RequestBody ResetPasswordRequest dto) {
 		Map<String, String> result = new HashMap<>();
-
-		if (!memberService.resetMemberPassword(dto)) {
-			return addErrorStatus(result);
-		}
+		memberService.resetMemberPassword(dto);
 		return addOkStatus(result);
 	}
 
@@ -374,13 +344,8 @@ public class MemberController {
 	@PostMapping("/chose-child")
 	public ResponseEntity<Map<String, String>> choseChildToChangePassword(@RequestBody ResetPasswordRequest dto) {
 		Map<String, String> result = new HashMap<>();
-
-		if (!memberService.resetChildPassword(dto)) {
-			return addErrorStatus(result);
-		}
-
-		result.put("status", "200");
-		return ResponseEntity.ok().build();
+		memberService.resetChildPassword(dto);
+		return addOkStatus(result);
 	}
 
 	@PostMapping("/update-coordinate")
@@ -451,10 +416,7 @@ public class MemberController {
 			return addErrorStatus(result);
 		}
 
-		if (!memberService.addParent(foundMember.getMemberId(), foundChild.getChildName())) {
-			return addErrorStatus(result);
-		}
-
+		memberService.addParent(foundMember.getMemberId(), foundChild.getChildName());
 		return addOkStatus(result);
 	}
 
@@ -494,10 +456,7 @@ public class MemberController {
 	@PostMapping("/update-nickname")
 	public ResponseEntity<Map<String, String>> updateNickName(@RequestBody UpdateMemberNameRequest dto) {
 		Map<String, String> result = new HashMap<>();
-
-		if (!memberService.updateMemberName(dto)) {
-			return addErrorStatus(result);
-		}
+		memberService.updateMemberName(dto);
 
 		return addOkStatus(result);
 	}

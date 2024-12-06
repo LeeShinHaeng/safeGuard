@@ -108,9 +108,7 @@ public class NoticeService {
 				childName,
 				noticeLevel
 			);
-			if (sendNotificationTo(notice)) {
-				throw new RuntimeException("Send Notice Failed");
-			}
+			sendNotificationTo(notice);
 		}
 	}
 
@@ -132,9 +130,9 @@ public class NoticeService {
 		return inside;
 	}
 
-	public boolean sendNotificationTo(Notice notice) {
+	public void sendNotificationTo(Notice notice) {
 		FCMNotificationDTO message = makeMessage(notice);
-		return fcmService.SendNotificationByToken(message);
+		fcmService.SendNotificationByToken(message);
 	}
 
 	private FCMNotificationDTO makeMessage(Notice notice) {
