@@ -11,6 +11,7 @@ spring:
       ddl-auto: validate
     database-platform: org.hibernate.dialect.MySQL8Dialect
     open-in-view: false
+    show-sql: true
   data:
     redis:
       host: localhost

@@ -24,11 +24,9 @@ import com.capstone.safeGuard.apis.member.presentation.request.updatecoordinate.
 import com.capstone.safeGuard.apis.member.presentation.response.TokenInfo;
 import com.capstone.safeGuard.apis.notice.application.NoticeService;
 import com.capstone.safeGuard.domain.member.domain.Child;
-import com.capstone.safeGuard.domain.member.domain.ChildBattery;
 import com.capstone.safeGuard.domain.member.domain.Helping;
 import com.capstone.safeGuard.domain.member.domain.LoginType;
 import com.capstone.safeGuard.domain.member.domain.Member;
-import com.capstone.safeGuard.domain.member.domain.MemberBattery;
 import com.capstone.safeGuard.domain.member.domain.Parenting;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -367,16 +365,16 @@ public class MemberController {
 		Map<String, Double> coordinates;
 
 		if (dto.type().equals("Member")) {
-			MemberBattery memberBattery = batteryService.getMemberBattery(dto.id());
+			int memberBatteryValue = batteryService.getMemberBattery(dto.id());
 			coordinates = coordinateService.getMemberCoordinate(dto.id());
 
-			coordinates.put("battery", (memberBattery.getBatteryValue() * 1.0));
+			coordinates.put("battery", (memberBatteryValue * 1.0));
 			return ResponseEntity.ok(coordinates);
 		} else if (dto.type().equals("Child")) {
-			ChildBattery childBattery = batteryService.getChildBattery(dto.id());
+			int childBatteryValue = batteryService.getChildBattery(dto.id());
 			coordinates = coordinateService.getChildCoordinate(dto.id());
 
-			coordinates.put("battery", (childBattery.getBatteryValue() * 1.0));
+			coordinates.put("battery", (childBatteryValue * 1.0));
 			noticeService.sendNotice(dto.id());
 			return ResponseEntity.ok(coordinates);
 		}
