@@ -11,6 +11,7 @@ import com.capstone.safeGuard.domain.member.infrastructure.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +25,7 @@ import java.util.Set;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@EnableScheduling
 public class CoordinateService {
 	private final CoordinateRepository coordinateRepository;
 	private final ChildRepository childRepository;
@@ -118,8 +120,8 @@ public class CoordinateService {
 	/**
 	 * 스케줄링: Redis 데이터를 MySQL로 주기적으로 동기화
 	 */
-	@Scheduled(fixedRate = 1800000) // 30분 간격
 	@Transactional
+	@Scheduled(cron = "0 0,30 * * * *") // 30분 간격
 	public void syncCoordinatesToDatabase() {
 		// Redis에 저장된 모든 Member 데이터를 가져옴
 		Set<String> keys = redisTemplate.keys(MEMBER_COORDINATES_KEY_PREFIX + "*");

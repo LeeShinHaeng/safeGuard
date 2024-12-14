@@ -10,6 +10,7 @@ import com.capstone.safeGuard.domain.member.infrastructure.MemberBatteryReposito
 import com.capstone.safeGuard.domain.member.infrastructure.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +22,7 @@ import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
+@EnableScheduling
 public class BatteryService {
 	private final ChildBatteryRepository childBatteryRepository;
 	private final MemberBatteryRepository memberBatteryRepository;
@@ -74,10 +76,9 @@ public class BatteryService {
 	/**
 	 * 스케줄링: Redis 데이터를 MySQL로 주기적으로 동기화
 	 */
-	@Scheduled(fixedRate = 1000) // 30분 간격
 	@Transactional
+	@Scheduled(cron = "0 0,30 * * * *") // 30분 간격
 	public void syncCoordinatesToDatabaseBattery() {
-		System.out.println("BatteryService.syncCoordinatesToDatabaseBattery");
 		// Redis에 저장된 모든 Member 데이터를 가져옴
 		Set<String> keys = redisTemplate.keys(MEMBER_BATTERY_KEY_PREFIX + "*");
 		for (String key : keys) {
