@@ -10,20 +10,35 @@ import com.capstone.safeGuard.domain.member.infrastructure.ChildRepository;
 import com.capstone.safeGuard.domain.member.infrastructure.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@EnableScheduling
 public class CoordinateService {
 	private final CoordinateRepository coordinateRepository;
 	private final ChildRepository childRepository;
 	private final MemberRepository memberRepository;
+	private final RedisTemplate<String, Object> redisTemplate;
+
+	// Redis에 저장하는 키의 접두사
+	private static final String MEMBER_COORDINATES_KEY_PREFIX = "member:";
+	private static final String CHILD_COORDINATES_KEY_PREFIX = "child:";
+
+	private static final int MIN_TIMEOUT = 60;
+	private static final String LATITUDE_KEY = "latitude";
+	private static final String LONGITUDE_KEY = "longitude";
 
 	@Transactional
 	public Long addForbiddenArea(AddAreaRequest addAreaRequest) {
@@ -65,8 +80,8 @@ public class CoordinateService {
 		Child foundChild = childRepository.findByChildName(childName)
 			.orElseThrow(() -> new RuntimeException("No Such Child"));
 		Coordinate foundCoordinate = findAreaById(areaID);
-		if (! foundChild.equals(foundCoordinate.getChild())) {
-            throw new RuntimeException("Not Match: Child - Coordinate");
+		if (!foundChild.equals(foundCoordinate.getChild())) {
+			throw new RuntimeException("Not Match: Child - Coordinate");
 		}
 
 		coordinateRepository.delete(foundCoordinate);
@@ -86,37 +101,109 @@ public class CoordinateService {
 
 	@Transactional
 	public void updateMemberCoordinate(String id, double latitude, double longitude) {
-		Member foundMember = findMemberById(id);
-		foundMember.setLatitude(latitude);
-		foundMember.setLongitude(longitude);
+		Map<String, Double> coordinates = new HashMap<>();
+		coordinates.put(LATITUDE_KEY, latitude);
+		coordinates.put(LONGITUDE_KEY, longitude);
+
+		redisTemplate.opsForHash().putAll(MEMBER_COORDINATES_KEY_PREFIX + id, coordinates);
+		redisTemplate.expire(MEMBER_COORDINATES_KEY_PREFIX + id, Duration.ofMinutes(MIN_TIMEOUT));
 	}
 
 	@Transactional
 	public void updateChildCoordinate(String name, double latitude, double longitude) {
-		Child foundChild = findChildByName(name);
+		Map<String, Double> coordinates = new HashMap<>();
+		coordinates.put(LATITUDE_KEY, latitude);
+		coordinates.put(LONGITUDE_KEY, longitude);
 
-		foundChild.setLatitude(latitude);
-		foundChild.setLongitude(longitude);
+		redisTemplate.opsForHash().putAll(CHILD_COORDINATES_KEY_PREFIX + name, coordinates);
+		redisTemplate.expire(CHILD_COORDINATES_KEY_PREFIX + name, Duration.ofMinutes(MIN_TIMEOUT));
+	}
+
+	/**
+	 * 스케줄링: Redis 데이터를 MySQL로 주기적으로 동기화
+	 */
+	@Transactional
+	@Scheduled(cron = "0 0,30 * * * *") // 30분 간격
+	public void syncCoordinatesToDatabase() {
+		// Redis에 저장된 모든 Member 데이터를 가져옴
+		Set<String> keys = redisTemplate.keys(MEMBER_COORDINATES_KEY_PREFIX + "*");
+		for (String key : keys) {
+			String id = key.replace(MEMBER_COORDINATES_KEY_PREFIX, "");
+			Map<Object, Object> cachedCoordinates = redisTemplate.opsForHash().entries(key);
+
+			if (!cachedCoordinates.isEmpty()) {
+				double latitude = (Double) cachedCoordinates.get(LATITUDE_KEY);
+				double longitude = (Double) cachedCoordinates.get(LONGITUDE_KEY);
+
+				Member member = findMemberById(id);
+				member.setLatitude(latitude);
+				member.setLongitude(longitude);
+
+				redisTemplate.delete(key);
+			}
+		}
+
+		// Redis에 저장된 모든 Child 데이터를 가져옴
+		keys = redisTemplate.keys(CHILD_COORDINATES_KEY_PREFIX + "*");
+		for (String key : keys) {
+			String name = key.replace(CHILD_COORDINATES_KEY_PREFIX, "");
+			Map<Object, Object> cachedCoordinates = redisTemplate.opsForHash().entries(key);
+
+			if (!cachedCoordinates.isEmpty()) {
+				double latitude = (Double) cachedCoordinates.get(LATITUDE_KEY);
+				double longitude = (Double) cachedCoordinates.get(LONGITUDE_KEY);
+
+				Child child = findChildByName(name);
+				child.setLatitude(latitude);
+				child.setLongitude(longitude);
+
+				redisTemplate.delete(key);
+			}
+		}
 	}
 
 	@Transactional
 	public Map<String, Double> getMemberCoordinate(String id) {
+		Map<Object, Object> cachedCoordinates = redisTemplate.opsForHash().entries(MEMBER_COORDINATES_KEY_PREFIX + id);
+		if (!cachedCoordinates.isEmpty()) {
+			// Redis에 데이터가 있는 경우
+			Map<String, Double> coordinates = new HashMap<>();
+			coordinates.put(LATITUDE_KEY, (Double) cachedCoordinates.get(LATITUDE_KEY));
+			coordinates.put(LONGITUDE_KEY, (Double) cachedCoordinates.get(LONGITUDE_KEY));
+			return coordinates;
+		}
+
 		Member member = findMemberById(id);
 
 		Map<String, Double> coordinates = new HashMap<>();
-		coordinates.put("latitude", member.getLatitude());
-		coordinates.put("longitude", member.getLongitude());
+		coordinates.put(LATITUDE_KEY, member.getLatitude());
+		coordinates.put(LONGITUDE_KEY, member.getLongitude());
+
+		redisTemplate.opsForHash().putAll(MEMBER_COORDINATES_KEY_PREFIX + id, coordinates);
+		redisTemplate.expire(MEMBER_COORDINATES_KEY_PREFIX + id, Duration.ofMinutes(MIN_TIMEOUT));
 
 		return coordinates;
 	}
 
 	@Transactional
 	public Map<String, Double> getChildCoordinate(String id) {
+		Map<Object, Object> cachedCoordinates = redisTemplate.opsForHash().entries(CHILD_COORDINATES_KEY_PREFIX + id);
+		if (!cachedCoordinates.isEmpty()) {
+			// Redis에 데이터가 있는 경우
+			Map<String, Double> coordinates = new HashMap<>();
+			coordinates.put(LATITUDE_KEY, (Double) cachedCoordinates.get(LATITUDE_KEY));
+			coordinates.put(LONGITUDE_KEY, (Double) cachedCoordinates.get(LONGITUDE_KEY));
+			return coordinates;
+		}
+
 		Child foundChild = findChildByName(id);
 
 		Map<String, Double> coordinates = new HashMap<>();
-		coordinates.put("latitude", foundChild.getLatitude());
-		coordinates.put("longitude", foundChild.getLongitude());
+		coordinates.put(LATITUDE_KEY, foundChild.getLatitude());
+		coordinates.put(LONGITUDE_KEY, foundChild.getLongitude());
+
+		redisTemplate.opsForHash().putAll(CHILD_COORDINATES_KEY_PREFIX + id, coordinates);
+		redisTemplate.expire(CHILD_COORDINATES_KEY_PREFIX + id, Duration.ofMinutes(MIN_TIMEOUT));
 
 		return coordinates;
 	}
