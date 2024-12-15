@@ -33,7 +33,9 @@ public class BatteryService {
 	// Redis에 저장하는 키의 접두사
 	private static final String MEMBER_BATTERY_KEY_PREFIX = "member_battery:";
 	private static final String CHILD_BATTERY_KEY_PREFIX = "child_battery:";
+
 	private static final int MIN_TIMEOUT = 60;
+	private static final String BATTERY_KEY = "battery";
 
 	@Transactional
 	public void initChildBattery(Child foundChild, int battery) {
@@ -58,7 +60,7 @@ public class BatteryService {
 	@Transactional
 	public void setChildBattery(String id, int battery) {
 		Map<String, Integer> batteryMap = new HashMap<>();
-		batteryMap.put("battery", battery);
+		batteryMap.put(BATTERY_KEY, battery);
 
 		redisTemplate.opsForHash().putAll(CHILD_BATTERY_KEY_PREFIX + id, batteryMap);
 		redisTemplate.expire(CHILD_BATTERY_KEY_PREFIX + id, Duration.ofMinutes(MIN_TIMEOUT));
@@ -67,7 +69,7 @@ public class BatteryService {
 	@Transactional
 	public void setMemberBattery(String id, int battery) {
 		Map<String, Integer> batteryMap = new HashMap<>();
-		batteryMap.put("battery", battery);
+		batteryMap.put(BATTERY_KEY, battery);
 
 		redisTemplate.opsForHash().putAll(MEMBER_BATTERY_KEY_PREFIX + id, batteryMap);
 		redisTemplate.expire(MEMBER_BATTERY_KEY_PREFIX + id, Duration.ofMinutes(MIN_TIMEOUT));
@@ -86,7 +88,7 @@ public class BatteryService {
 			Map<Object, Object> cachedCoordinates = redisTemplate.opsForHash().entries(key);
 
 			if (!cachedCoordinates.isEmpty()) {
-				int battery = (Integer) cachedCoordinates.get("battery");
+				int battery = (Integer) cachedCoordinates.get(BATTERY_KEY);
 
 				Member foundMember = findMemberById(id);
 				MemberBattery foundBattery = memberBatteryRepository.findByMemberId(foundMember)
@@ -109,7 +111,7 @@ public class BatteryService {
 			Map<Object, Object> cachedCoordinates = redisTemplate.opsForHash().entries(key);
 
 			if (!cachedCoordinates.isEmpty()) {
-				int battery = (Integer) cachedCoordinates.get("battery");
+				int battery = (Integer) cachedCoordinates.get(BATTERY_KEY);
 
 				Child foundChild = findChildByName(name);
 				ChildBattery foundBattery = childBatteryRepository.findByChildName(foundChild)
@@ -131,7 +133,7 @@ public class BatteryService {
 		Map<Object, Object> cachedCoordinates = redisTemplate.opsForHash().entries(CHILD_BATTERY_KEY_PREFIX + id);
 		if (!cachedCoordinates.isEmpty()) {
 			// Redis에 데이터가 있는 경우
-			return (Integer) cachedCoordinates.get("battery");
+			return (Integer) cachedCoordinates.get(BATTERY_KEY);
 		}
 
 		Child foundChild = findChildByName(id);
@@ -145,7 +147,7 @@ public class BatteryService {
 		Map<Object, Object> cachedCoordinates = redisTemplate.opsForHash().entries(MEMBER_BATTERY_KEY_PREFIX + id);
 		if (!cachedCoordinates.isEmpty()) {
 			// Redis에 데이터가 있는 경우
-			return (Integer) cachedCoordinates.get("battery");
+			return (Integer) cachedCoordinates.get(BATTERY_KEY);
 		}
 
 		Member foundMember = findMemberById(id);
