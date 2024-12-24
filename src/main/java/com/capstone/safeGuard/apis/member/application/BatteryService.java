@@ -17,8 +17,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -81,8 +83,28 @@ public class BatteryService {
 	@Transactional
 	@Scheduled(cron = "0 0,30 * * * *") // 30분 간격
 	public void syncCoordinatesToDatabaseBattery() {
-		// Redis에 저장된 모든 Member 데이터를 가져옴
+		syncMemberBattery();
+		syncChildBattery();
+	}
+
+	@Transactional
+	public void syncMemberBattery() {
 		Set<String> keys = redisTemplate.keys(MEMBER_BATTERY_KEY_PREFIX + "*");
+
+		if (keys.isEmpty()) return;
+
+		List<String> ids = keys.stream()
+			.map(key -> key.replace(MEMBER_BATTERY_KEY_PREFIX, ""))
+			.collect(Collectors.toList());
+
+		List<Member> members = memberRepository.findAllById(ids);
+		Map<String, Member> memberMap = members.stream()
+			.collect(Collectors.toMap(Member::getMemberId, member -> member));
+
+		List<MemberBattery> existingBatteries = memberBatteryRepository.findByMemberIdIn(members);
+		Map<String, MemberBattery> batteryMap = existingBatteries.stream()
+			.collect(Collectors.toMap(battery -> battery.getMemberId().getMemberId(), battery -> battery));
+
 		for (String key : keys) {
 			String id = key.replace(MEMBER_BATTERY_KEY_PREFIX, "");
 			Map<Object, Object> cachedCoordinates = redisTemplate.opsForHash().entries(key);
@@ -90,22 +112,40 @@ public class BatteryService {
 			if (!cachedCoordinates.isEmpty()) {
 				int battery = (Integer) cachedCoordinates.get(BATTERY_KEY);
 
-				Member foundMember = findMemberById(id);
-				MemberBattery foundBattery = memberBatteryRepository.findByMemberId(foundMember)
-					.orElse(null);
+				Member member = memberMap.get(id);
+				if (member != null) {
+					MemberBattery batteryEntity = batteryMap.get(id);
 
-				if (foundBattery == null) {
-					initMemberBattery(foundMember, battery);
-					return;
+					if (batteryEntity == null) {
+						initMemberBattery(member, battery);
+					} else {
+						batteryEntity.setBatteryValue(battery);
+					}
 				}
-				foundBattery.setBatteryValue(battery);
 
 				redisTemplate.delete(key);
 			}
 		}
+	}
 
-		// Redis에 저장된 모든 Child 데이터를 가져옴
-		keys = redisTemplate.keys(CHILD_BATTERY_KEY_PREFIX + "*");
+	@Transactional
+	public void syncChildBattery() {
+		Set<String> keys = redisTemplate.keys(CHILD_BATTERY_KEY_PREFIX + "*");
+
+		if (keys.isEmpty()) return;
+
+		List<String> names = keys.stream()
+			.map(key -> key.replace(CHILD_BATTERY_KEY_PREFIX, ""))
+			.collect(Collectors.toList());
+
+		List<Child> children = childRepository.findByChildNameIn(names);
+		Map<String, Child> childMap = children.stream()
+			.collect(Collectors.toMap(Child::getChildName, child -> child));
+
+		List<ChildBattery> existingBatteries = childBatteryRepository.findByChildNameIn(children);
+		Map<String, ChildBattery> batteryMap = existingBatteries.stream()
+			.collect(Collectors.toMap(battery -> battery.getChildName().getChildName(), battery -> battery));
+
 		for (String key : keys) {
 			String name = key.replace(CHILD_BATTERY_KEY_PREFIX, "");
 			Map<Object, Object> cachedCoordinates = redisTemplate.opsForHash().entries(key);
@@ -113,20 +153,22 @@ public class BatteryService {
 			if (!cachedCoordinates.isEmpty()) {
 				int battery = (Integer) cachedCoordinates.get(BATTERY_KEY);
 
-				Child foundChild = findChildByName(name);
-				ChildBattery foundBattery = childBatteryRepository.findByChildName(foundChild)
-					.orElse(null);
+				Child child = childMap.get(name);
+				if (child != null) {
+					ChildBattery batteryEntity = batteryMap.get(name);
 
-				if (foundBattery == null) {
-					initChildBattery(foundChild, battery);
-					return;
+					if (batteryEntity == null) {
+						initChildBattery(child, battery);
+					} else {
+						batteryEntity.setBatteryValue(battery);
+					}
 				}
-				foundBattery.setBatteryValue(battery);
 
 				redisTemplate.delete(key);
 			}
 		}
 	}
+
 
 	@Transactional
 	public int getChildBattery(String id) {
