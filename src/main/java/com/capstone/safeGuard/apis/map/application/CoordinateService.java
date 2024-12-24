@@ -19,8 +19,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -125,42 +127,76 @@ public class CoordinateService {
 	@Transactional
 	@Scheduled(cron = "0 0,30 * * * *") // 30분 간격
 	public void syncCoordinatesToDatabase() {
-		// Redis에 저장된 모든 Member 데이터를 가져옴
+		syncMemberCoordinates();
+		syncChildCoordinates();
+	}
+
+	private void syncMemberCoordinates() {
 		Set<String> keys = redisTemplate.keys(MEMBER_COORDINATES_KEY_PREFIX + "*");
+
+		if (keys.isEmpty()) {
+			return;
+		}
+		List<String> ids = keys.stream()
+			.map(key -> key.replace(MEMBER_COORDINATES_KEY_PREFIX, ""))
+			.collect(Collectors.toList());
+
+		List<Member> members = memberRepository.findAllById(ids);
+		Map<String, Member> memberMap = members.stream()
+			.collect(Collectors.toMap(Member::getMemberId, member -> member));
+
 		for (String key : keys) {
 			String id = key.replace(MEMBER_COORDINATES_KEY_PREFIX, "");
 			Map<Object, Object> cachedCoordinates = redisTemplate.opsForHash().entries(key);
 
 			if (!cachedCoordinates.isEmpty()) {
-				double latitude = (Double) cachedCoordinates.get(LATITUDE_KEY);
-				double longitude = (Double) cachedCoordinates.get(LONGITUDE_KEY);
+				Double latitude = (Double) cachedCoordinates.get(LATITUDE_KEY);
+				Double longitude = (Double) cachedCoordinates.get(LONGITUDE_KEY);
 
-				Member member = findMemberById(id);
-				member.setLatitude(latitude);
-				member.setLongitude(longitude);
+				Member member = memberMap.get(id);
+				if (member != null) {
+					member.setLatitude(latitude);
+					member.setLongitude(longitude);
+				}
 
-				redisTemplate.delete(key);
+				redisTemplate.delete(key); // Redis 키 삭제
 			}
 		}
+	}
 
-		// Redis에 저장된 모든 Child 데이터를 가져옴
-		keys = redisTemplate.keys(CHILD_COORDINATES_KEY_PREFIX + "*");
+	private void syncChildCoordinates() {
+		Set<String> keys = redisTemplate.keys(CHILD_COORDINATES_KEY_PREFIX + "*");
+
+		if (keys.isEmpty()) {
+			return;
+		}
+		List<String> names = keys.stream()
+			.map(key -> key.replace(CHILD_COORDINATES_KEY_PREFIX, ""))
+			.collect(Collectors.toList());
+
+		List<Child> children = childRepository.findByChildNameIn(names);
+		Map<String, Child> childMap = children.stream()
+			.collect(Collectors.toMap(Child::getChildName, child -> child));
+
 		for (String key : keys) {
 			String name = key.replace(CHILD_COORDINATES_KEY_PREFIX, "");
 			Map<Object, Object> cachedCoordinates = redisTemplate.opsForHash().entries(key);
 
 			if (!cachedCoordinates.isEmpty()) {
-				double latitude = (Double) cachedCoordinates.get(LATITUDE_KEY);
-				double longitude = (Double) cachedCoordinates.get(LONGITUDE_KEY);
+				Double latitude = (Double) cachedCoordinates.get(LATITUDE_KEY);
+				Double longitude = (Double) cachedCoordinates.get(LONGITUDE_KEY);
 
-				Child child = findChildByName(name);
-				child.setLatitude(latitude);
-				child.setLongitude(longitude);
+				Child child = childMap.get(name);
+				if (child != null) {
+					child.setLatitude(latitude);
+					child.setLongitude(longitude);
+				}
 
-				redisTemplate.delete(key);
+				redisTemplate.delete(key); // Redis 키 삭제
 			}
 		}
 	}
+
 
 	@Transactional
 	public Map<String, Double> getMemberCoordinate(String id) {
