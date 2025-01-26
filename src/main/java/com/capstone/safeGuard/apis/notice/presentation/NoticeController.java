@@ -5,6 +5,7 @@ import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.Ge
 import com.capstone.safeGuard.apis.notice.application.NoticeService;
 import com.capstone.safeGuard.apis.notice.presentation.request.fatal.FatalRequest;
 import com.capstone.safeGuard.apis.notice.presentation.response.FindNotificationResponse;
+import com.capstone.safeGuard.apis.notice.presentation.response.NotificationListResponse;
 import com.capstone.safeGuard.domain.member.domain.Child;
 import com.capstone.safeGuard.domain.member.domain.Parenting;
 import com.capstone.safeGuard.domain.member.infrastructure.ChildRepository;
@@ -20,7 +21,6 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -30,7 +30,7 @@ public class NoticeController {
 	private final ChildRepository childRepository;
 
 	@PostMapping("/received-notice")
-	public ResponseEntity<Map<String, FindNotificationResponse>> receivedNotice(@RequestBody GetIdRequest dto) {
+	public ResponseEntity<NotificationListResponse> receivedNotice(@RequestBody GetIdRequest dto) {
 		HashMap<String, FindNotificationResponse> result = new HashMap<>();
 
 		List<Notice> noticeList = noticeService.findNoticeByMember(dto.id());
@@ -56,7 +56,7 @@ public class NoticeController {
 			);
 		}
 
-		return ResponseEntity.ok().body(result);
+		return ResponseEntity.ok().body(NotificationListResponse.from(result));
 	}
 
 	@PostMapping("/fatal")

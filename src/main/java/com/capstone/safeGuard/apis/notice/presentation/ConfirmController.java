@@ -6,6 +6,7 @@ import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.Ge
 import com.capstone.safeGuard.apis.notice.application.ConfirmService;
 import com.capstone.safeGuard.apis.notice.presentation.request.confirm.SendConfirmRequest;
 import com.capstone.safeGuard.apis.notice.presentation.response.FindNotificationResponse;
+import com.capstone.safeGuard.apis.notice.presentation.response.NotificationListResponse;
 import com.capstone.safeGuard.domain.member.domain.Child;
 import com.capstone.safeGuard.domain.member.domain.Helping;
 import com.capstone.safeGuard.domain.member.domain.Member;
@@ -23,7 +24,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -70,13 +70,13 @@ public class ConfirmController {
 	}
 
 	@PostMapping("/received-confirm")
-	public ResponseEntity<Map<String, FindNotificationResponse>> receivedConfirm(@RequestBody GetIdRequest dto) {
-		HashMap<String, FindNotificationResponse> result = new HashMap<>();
-
+	public ResponseEntity<NotificationListResponse> receivedConfirm(@RequestBody GetIdRequest dto) {
 		List<Confirm> confirmList = confirmService.findReceivedConfirmByMember(dto.id());
 		if (confirmList == null || confirmList.isEmpty()) {
-			return ResponseEntity.status(400).body(result);
+			return ResponseEntity.status(400).body(NotificationListResponse.from(new HashMap<>()));
 		}
+
+		HashMap<String, FindNotificationResponse> result = new HashMap<>();
 		for (Confirm confirm : confirmList) {
 			String tmpId = extractTmpId(confirm.getConfirmType());
 			String format = confirm.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
@@ -92,17 +92,17 @@ public class ConfirmController {
 			);
 		}
 
-		return ResponseEntity.ok().body(result);
+		return ResponseEntity.ok().body(NotificationListResponse.from(result));
 	}
 
 	@PostMapping("/sent-confirm")
-	public ResponseEntity<Map<String, FindNotificationResponse>> sentConfirm(@RequestBody GetIdRequest dto) {
-		HashMap<String, FindNotificationResponse> result = new HashMap<>();
-
+	public ResponseEntity<NotificationListResponse> sentConfirm(@RequestBody GetIdRequest dto) {
 		List<Confirm> confirmList = confirmService.findSentConfirmByMember(dto.id());
 		if (confirmList == null || confirmList.isEmpty()) {
-			return ResponseEntity.status(400).body(result);
+			return ResponseEntity.status(400).body(NotificationListResponse.from(new HashMap<>()));
 		}
+
+		HashMap<String, FindNotificationResponse> result = new HashMap<>();
 		for (Confirm confirm : confirmList) {
 			String tmpId = extractTmpId(confirm.getConfirmType());
 			String format = confirm.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
@@ -118,7 +118,7 @@ public class ConfirmController {
 			);
 		}
 
-		return ResponseEntity.ok().body(result);
+		return ResponseEntity.ok().body(NotificationListResponse.from(result));
 	}
 
 	private String extractTmpId(ConfirmType confirm) {

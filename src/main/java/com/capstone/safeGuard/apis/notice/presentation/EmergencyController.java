@@ -1,6 +1,7 @@
 package com.capstone.safeGuard.apis.notice.presentation;
 
-import com.capstone.safeGuard.apis.comment.presentation.response.CommentResponseDTO;
+import com.capstone.safeGuard.apis.comment.presentation.response.CommentListResponse;
+import com.capstone.safeGuard.apis.comment.presentation.response.CommentResponse;
 import com.capstone.safeGuard.apis.general.presentation.response.StatusOnlyResponse;
 import com.capstone.safeGuard.apis.notice.application.EmergencyService;
 import com.capstone.safeGuard.apis.notice.presentation.request.emergency.CommentIdDTO;
@@ -9,6 +10,7 @@ import com.capstone.safeGuard.apis.notice.presentation.request.emergency.Emergen
 import com.capstone.safeGuard.apis.notice.presentation.request.emergency.EmergencyRequestDTO;
 import com.capstone.safeGuard.apis.notice.presentation.request.emergency.MemberIdDTO;
 import com.capstone.safeGuard.apis.notice.presentation.response.FindNotificationResponse;
+import com.capstone.safeGuard.apis.notice.presentation.response.NotificationListResponse;
 import com.capstone.safeGuard.domain.comment.domain.Comment;
 import com.capstone.safeGuard.domain.notice.domain.Emergency;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +23,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -49,21 +50,19 @@ public class EmergencyController {
 	}
 
 	@PostMapping("/sent-emergency")
-	public ResponseEntity<Map<String, FindNotificationResponse>> showSentEmergency(@RequestBody MemberIdDTO dto) {
+	public ResponseEntity<NotificationListResponse> showSentEmergency(@RequestBody MemberIdDTO dto) {
 		List<Emergency> sentEmergencyList = emergencyService.getSentEmergency(dto.memberId());
-
 		HashMap<String, FindNotificationResponse> result = emergencyService.addEmergencyList(sentEmergencyList);
 
-		return ResponseEntity.ok().body(result);
+		return ResponseEntity.ok().body(NotificationListResponse.from(result));
 	}
 
 	@PostMapping("/received-emergency")
-	public ResponseEntity<Map<String, FindNotificationResponse>> showReceivedEmergency(@RequestBody MemberIdDTO dto) {
+	public ResponseEntity<NotificationListResponse> showReceivedEmergency(@RequestBody MemberIdDTO dto) {
 		List<Emergency> receivedEmergencyList = emergencyService.getReceivedEmergency(dto.memberId());
-
 		HashMap<String, FindNotificationResponse> result = emergencyService.addEmergencyList(receivedEmergencyList);
 
-		return ResponseEntity.ok().body(result);
+		return ResponseEntity.ok().body(NotificationListResponse.from(result));
 	}
 
 	@PostMapping("/write-comment")
@@ -79,8 +78,8 @@ public class EmergencyController {
 	}
 
 	@PostMapping("/emergency-detail")
-	public ResponseEntity<Map<String, CommentResponseDTO>> emergencyDetail(@RequestBody EmergencyIdDTO dto) {
-		HashMap<String, CommentResponseDTO> result = new HashMap<>();
+	public ResponseEntity<CommentListResponse> emergencyDetail(@RequestBody EmergencyIdDTO dto) {
+		HashMap<String, CommentResponse> result = new HashMap<>();
 
 		Emergency emergency = emergencyService.getEmergencyDetail(dto.emergencyId());
 		if (emergency == null) {
@@ -92,7 +91,7 @@ public class EmergencyController {
 			String format = comment.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
 
 			result.put(comment.getCommentId().toString(),
-				CommentResponseDTO.builder()
+				CommentResponse.builder()
 					.commentator(comment.getCommentator().getMemberId())
 					.commentDate(format)
 					.content(comment.getComment())
@@ -100,7 +99,7 @@ public class EmergencyController {
 			);
 		}
 
-		return ResponseEntity.ok().body(result);
+		return ResponseEntity.ok().body(CommentListResponse.from(result));
 	}
 
 	private static ResponseEntity<StatusOnlyResponse> addOkStatus() {
