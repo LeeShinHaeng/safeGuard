@@ -13,6 +13,7 @@ import com.capstone.safeGuard.apis.member.presentation.request.findidandresetpw.
 import com.capstone.safeGuard.apis.member.presentation.request.findidandresetpw.ResetPasswordRequest;
 import com.capstone.safeGuard.apis.member.presentation.request.findidandresetpw.VerificationEmailRequest;
 import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.ChildRegisterRequest;
+import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.ChildRemoveRequest;
 import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.GetIdRequest;
 import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.HelperRemoveRequest;
 import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.LoginRequest;
@@ -21,6 +22,16 @@ import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.Si
 import com.capstone.safeGuard.apis.member.presentation.request.signupandlogin.UpdateMemberNameRequest;
 import com.capstone.safeGuard.apis.member.presentation.request.updatecoordinate.CoordinateRequest;
 import com.capstone.safeGuard.apis.member.presentation.request.updatecoordinate.UpdateCoordinate;
+import com.capstone.safeGuard.apis.member.presentation.response.ChildListResponse;
+import com.capstone.safeGuard.apis.member.presentation.response.ChildNameListResponse;
+import com.capstone.safeGuard.apis.member.presentation.response.ChildResponse;
+import com.capstone.safeGuard.apis.member.presentation.response.CoordinateAndBatteryResponse;
+import com.capstone.safeGuard.apis.member.presentation.response.HelpingListResponse;
+import com.capstone.safeGuard.apis.member.presentation.response.LoginResponse;
+import com.capstone.safeGuard.apis.member.presentation.response.MemberIdResponse;
+import com.capstone.safeGuard.apis.member.presentation.response.ParentingHelpingListResponse;
+import com.capstone.safeGuard.apis.member.presentation.response.ParentingListResponse;
+import com.capstone.safeGuard.apis.member.presentation.response.StatusResponse;
 import com.capstone.safeGuard.apis.member.presentation.response.TokenInfo;
 import com.capstone.safeGuard.apis.notice.application.NoticeService;
 import com.capstone.safeGuard.domain.member.domain.Child;
@@ -37,9 +48,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.BindingResult;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -49,7 +58,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 
 @RestController
 @RequiredArgsConstructor
@@ -64,23 +72,11 @@ public class MemberController {
 	private final ChildService childService;
 	private final MemberUtil memberUtil;
 
-	@GetMapping("/login")
-	public String showLoginForm() {
-		return "login";
-	}
-
 	@PostMapping("/login")
-	public ResponseEntity<Map<String, String>> login(@Validated @RequestBody LoginRequest dto,
-													 BindingResult bindingResult,
-													 HttpServletResponse response,
-													 HttpServletRequest request) {
+	public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest dto,
+											   HttpServletResponse response,
+											   HttpServletRequest request) {
 		log.info(dto.editTextID(), dto.loginType());
-
-		Map<String, String> result = new HashMap<>();
-
-		if (bindingResult.hasErrors()) {
-			return addBindingError(result);
-		}
 
 		// Member 타입으로 로그인 하는 경우
 		if (dto.loginType().equals(LoginType.Member.toString())) {
@@ -88,61 +84,37 @@ public class MemberController {
 
 			// member가 존재하는 경우 token을 전달
 			TokenInfo tokenInfo = memberService.generateTokenOfMember(memberLogin);
-			storeTokenInBody(response, result, tokenInfo);
-			result.put("Type", "Member");
+			response.setHeader("Authorization", tokenInfo.accessToken());
+			return ResponseEntity.ok(LoginResponse.of(tokenInfo.accessToken(), "200", "Member"));
 		}
+
 		// Child 타입으로 로그인 하는 경우
 		else {
 			Child childLogin = childService.childLogin(dto);
 
-			// child가 존재하는 경우 token을 전달
-			TokenInfo tokenInfo = memberService.generateTokenOfChild(childLogin);
-			storeTokenInBody(response, result, tokenInfo);
-
 			HttpSession session = request.getSession();
 			session.setAttribute("childName", childLogin.getChildName());
-			result.put("Type", "Child");
+
+			// child가 존재하는 경우 token을 전달
+			TokenInfo tokenInfo = memberService.generateTokenOfChild(childLogin);
+			response.setHeader("Authorization", tokenInfo.accessToken());
+			return ResponseEntity.ok(LoginResponse.of(tokenInfo.accessToken(), "200", "Child"));
 		}
-		return addOkStatus(result);
 	}
 
-	private void storeTokenInBody(HttpServletResponse response, Map<String, String> result, TokenInfo tokenInfo) {
-		response.setHeader("Authorization", tokenInfo.accessToken());
-		// 생성한 토큰을 저장
-		jwtService.storeToken(tokenInfo);
-		result.put("authorization", tokenInfo.accessToken());
-		result.put("status", "200");
-	}
-
-	@GetMapping("/signup")
-	public String showMemberSignUpForm() {
-		return "signup";
-	}
-
-	@PostMapping(value = "/signup", produces = MediaType.APPLICATION_JSON_VALUE)
-	public ResponseEntity<Map<String, String>> memberSignUp(@Validated @RequestBody SignUpRequest dto,
-															BindingResult bindingResult) {
+	@PostMapping(value = "/signup")
+	public ResponseEntity<StatusResponse> memberSignUp(@RequestBody SignUpRequest dto) {
 		log.info(dto.inputID());
 		log.info(dto.inputName());
 
 		HashMap<String, String> result = new HashMap<>();
 
-		String errorMessage = memberUtil.validateBindingError(bindingResult);
-		if (errorMessage != null) {
-			return addErrorStatus(result);
-		}
-
 		memberService.signup(dto);
-		return addOkStatus(result);
+		return ResponseEntity.ok(StatusResponse.of("200"));
 	}
 
-	@GetMapping("/memberremove")
-	public String showMemberRemoveForm() {
-		return "login";
-	}
-
-	@PostMapping("/memberremove")
-	public ResponseEntity<?> memberRemove(@Validated @RequestBody MemberIdRequest dto, BindingResult bindingResult) {
+	@PostMapping("/member-remove")
+	public ResponseEntity<String> memberRemove(@RequestBody MemberIdRequest dto, BindingResult bindingResult) {
 
 		String errorMessage = memberUtil.validateBindingError(bindingResult);
 		if (errorMessage != null) {
@@ -154,13 +126,8 @@ public class MemberController {
 		return ResponseEntity.ok().build();
 	}
 
-	@GetMapping("/childsignup")
-	public String showChildSignUpForm() {
-		return "group";
-	}
-
-	@PostMapping(value = "/childsignup", produces = MediaType.APPLICATION_JSON_VALUE)
-	public ResponseEntity<String> childSignUp(@Validated @RequestBody ChildRegisterRequest childDto,
+	@PostMapping(value = "/child-signup", produces = MediaType.APPLICATION_JSON_VALUE)
+	public ResponseEntity<String> childSignUp(@RequestBody ChildRegisterRequest childDto,
 											  BindingResult bindingResult) {
 		log.info("childSignup 실행");
 
@@ -173,13 +140,8 @@ public class MemberController {
 		return ResponseEntity.ok().build();
 	}
 
-	@GetMapping("/childremove")
-	public String showChildRemoveForm() {
-		return "group";
-	}
-
-	@PostMapping("/childremove")
-	public ResponseEntity<String> childRemove(@Validated @RequestBody Map<String, String> requestBody,
+	@PostMapping("/child-remove")
+	public ResponseEntity<String> childRemove(@RequestBody ChildRemoveRequest dto,
 											  BindingResult bindingResult) {
 
 		String errorMessage = memberUtil.validateBindingError(bindingResult);
@@ -187,25 +149,25 @@ public class MemberController {
 			return ResponseEntity.badRequest().body(errorMessage);
 		}
 
-		String childName = requestBody.get("childName");
+		String childName = dto.childName();
 		childService.childRemove(childName);
 		return ResponseEntity.ok().build();
 	}
 
-	@PostMapping("/addhelper")
-	public ResponseEntity<String> addHelper(@Validated @RequestBody MemberRegisterRequest memberRegisterRequest,
+	@PostMapping("/add-helper")
+	public ResponseEntity<String> addHelper(@RequestBody MemberRegisterRequest dto,
 											BindingResult bindingResult) {
 		String errorMessage = memberUtil.validateBindingError(bindingResult);
 		if (errorMessage != null) {
 			return ResponseEntity.badRequest().body(errorMessage);
 		}
-		memberUtil.addHelper(memberRegisterRequest);
+		memberUtil.addHelper(dto);
 
 		return ResponseEntity.ok().build();
 	}
 
-	@PostMapping("/return-nickname")
-	public ResponseEntity<String> returnNickname(@Validated @RequestBody GetIdRequest dto,
+	@PostMapping("/get-nickname")
+	public ResponseEntity<String> returnNickname(@RequestBody GetIdRequest dto,
 												 BindingResult bindingResult) {
 		String errorMessage = memberUtil.validateBindingError(bindingResult);
 		if (errorMessage != null) {
@@ -221,205 +183,192 @@ public class MemberController {
 	}
 
 
-	@PostMapping("/helperremove")
-	public ResponseEntity<String> helperRemove(@Validated @RequestBody HelperRemoveRequest dto,
+	@PostMapping("/helper-remove")
+	public ResponseEntity<String> helperRemove(@RequestBody HelperRemoveRequest dto,
 											   BindingResult bindingResult) {
-
 		String errorMessage = memberUtil.validateBindingError(bindingResult);
 		if (errorMessage != null) {
 			return ResponseEntity.badRequest().body(errorMessage);
 		}
+
 		memberUtil.helperRemove(dto);
 		return ResponseEntity.ok().build();
 	}
 
 	//로그인한 멤버의 자식(그룹)들을 찾아서 반환
 	@PostMapping("/group")
-	public List<Child> showChildList(@Validated @RequestBody Map<String, String> requestBody) {
-
-		String memberId = requestBody.get("memberId");
+	public ResponseEntity<ChildListResponse> showChildList(@RequestBody MemberIdRequest dto) {
+		String memberId = dto.memberId();
 
 		log.info(memberId + "의 자식 리스트 반환 ");
 		List<Child> childList = childService.getChildList(memberId);
 		if (childList == null) {
 			log.info("NULL");
+			return ResponseEntity.ok(ChildListResponse.fromChildList(null));
 		}
 
-		return childList;
+		List<ChildResponse> responses = new ArrayList<>();
+		for (Child child : childList) {
+			responses.add(ChildResponse.of(
+				child.getId().toString(),
+				child.getChildName(),
+				child.getLastStatus()
+			));
+		}
+
+		return ResponseEntity.ok(ChildListResponse.fromChildList(responses));
 	}
 
 
 	@GetMapping("/member-logout")
-	public ResponseEntity<Map<String, String>> logout(HttpServletRequest request) {
-		Map<String, String> result = new HashMap<>();
+	public ResponseEntity<StatusResponse> logout(HttpServletRequest request) {
 		String requestToken = request.getHeader("Authorization");
 
 		jwtService.findByToken(requestToken);
 		memberService.logout(requestToken);
-		return addOkStatus(result);
+		return ResponseEntity.ok(StatusResponse.of("200"));
 	}
 
 	@PostMapping("/find-member-id")
-	public ResponseEntity<Map<String, String>> findMemberId(@Valid @RequestBody FindMemberIdRequest dto,
-															BindingResult bindingResult) {
-		Map<String, String> result = new HashMap<>();
-
-		if (bindingResult.hasErrors()) {
-			return addBindingError(result);
-		}
-
+	public ResponseEntity<MemberIdResponse> findMemberId(@Valid @RequestBody FindMemberIdRequest dto) {
 		String memberId = memberService.findMemberId(dto);
-
-		result.put("status", "200");
-		result.put("memberId", memberId);
-
-		return ResponseEntity.ok().body(result);
+		return ResponseEntity.ok().body(MemberIdResponse.of("200", memberId));
 	}
 
 	// 비밀번호 확인을 위한 이메일 인증 1
 	// 인증번호 전송
 	@PostMapping("/verification-email-request")
-	public ResponseEntity<Map<String, String>> verificationEmailRequest(@RequestBody EmailRequest dto) {
-		Map<String, String> result = new HashMap<>();
+	public ResponseEntity<StatusResponse> verificationEmailRequest(@RequestBody EmailRequest dto) {
 		mailService.sendCodeToEmail(dto.inputId());
-		return addOkStatus(result);
+		return ResponseEntity.ok(StatusResponse.of("200"));
 	}
 
 	// 비밀번호 확인을 위한 이메일 인증 2
 	// 인증번호 확인
 	@PostMapping("/verification-email")
-	public ResponseEntity<Map<String, String>> verificationEmail(@RequestBody VerificationEmailRequest dto) {
-		Map<String, String> result = new HashMap<>();
+	public ResponseEntity<StatusResponse> verificationEmail(@RequestBody VerificationEmailRequest dto) {
 		if (!mailService.verifiedCode(dto.inputId(), dto.inputCode())) {
-			// 코드가 틀렸다는 메시지와 함께 다시 입력하는 곳으로 리다이렉트
-			return addErrorStatus(result);
+			return ResponseEntity.ok(StatusResponse.of("400"));
 		}
-		// 비밀번호 재설정 팝업 or 리다이렉트
 
-		return addOkStatus(result);
+		return ResponseEntity.ok(StatusResponse.of("200"));
 	}
 
 	// 비밀번호 확인을 위한 이메일 인증 3
 	@PostMapping("/reset-member-password")
-	public ResponseEntity<Map<String, String>> resetMemberPassword(@RequestBody ResetPasswordRequest dto) {
-		Map<String, String> result = new HashMap<>();
+	public ResponseEntity<StatusResponse> resetMemberPassword(@RequestBody ResetPasswordRequest dto) {
 		memberService.resetMemberPassword(dto);
-		return addOkStatus(result);
+		return ResponseEntity.ok(StatusResponse.of("200"));
 	}
 
 	@PostMapping("/find-child-list")
-	public ResponseEntity<Map<String, String>> findChildNameList(@Validated @RequestBody MemberIdRequest dto) {
-		Map<String, String> childList = getChildList(dto.memberId());
-		return addOkStatus(childList);
+	public ResponseEntity<ChildNameListResponse> findChildNameList(@RequestBody MemberIdRequest dto) {
+		Map<String, String> childList = memberService.getChildList(dto.memberId());
+		return ResponseEntity.ok(ChildNameListResponse.fromMap(childList));
 	}
 
 	@PostMapping("/find-parenting-helping-list")
-	public ResponseEntity<Map<String, Map<String, String>>> findParentingAndHelpingList(@Validated @RequestBody MemberIdRequest dto) {
-		Map<String, Map<String, String>> result = new HashMap<>();
-		result.put("Parenting", getChildList(dto.memberId()));
-		result.put("Helping", getHelpingList(dto.memberId()));
-
-		return ResponseEntity.ok().body(result);
+	public ResponseEntity<ParentingHelpingListResponse> findParentingAndHelpingList(@RequestBody MemberIdRequest dto) {
+		return ResponseEntity.ok().body(
+			ParentingHelpingListResponse.from(
+				memberService.getChildList(dto.memberId()),
+				memberService.getHelpingList(dto.memberId())
+			));
 	}
 
 	@PostMapping("/find-helping-list")
-	public ResponseEntity<Map<String, Map<String, String>>> findHelpingList(@Validated @RequestBody MemberIdRequest dto) {
-		Map<String, Map<String, String>> result = new HashMap<>();
-		result.put("Helping", getHelpingList(dto.memberId()));
-
-		return ResponseEntity.ok().body(result);
+	public ResponseEntity<HelpingListResponse> findHelpingList(@RequestBody MemberIdRequest dto) {
+		return ResponseEntity.ok().body(
+			HelpingListResponse.from(
+				memberService.getHelpingList(dto.memberId())
+			)
+		);
 	}
 
-	@PostMapping("/chose-child-form")
-	public ResponseEntity<Map<String, String>> choseChildForm(@RequestBody MemberIdRequest dto) {
-		Map<String, String> childList = getChildList(dto.memberId());
-
-		return addOkStatus(childList);
+	@PostMapping("/find-parenting-list")
+	public ResponseEntity<ParentingListResponse> choseChildForm(@RequestBody MemberIdRequest dto) {
+		return ResponseEntity.ok().body(
+			ParentingListResponse.from(
+				memberService.getChildList(dto.memberId())
+			)
+		);
 	}
 
 	@PostMapping("/chose-child")
-	public ResponseEntity<Map<String, String>> choseChildToChangePassword(@RequestBody ResetPasswordRequest dto) {
-		Map<String, String> result = new HashMap<>();
+	public ResponseEntity<StatusResponse> choseChildToChangePassword(@RequestBody ResetPasswordRequest dto) {
 		childService.resetChildPassword(dto);
-		return addOkStatus(result);
+		return ResponseEntity.ok(StatusResponse.of("200"));
 	}
 
 	@PostMapping("/update-coordinate")
-	public ResponseEntity<Map<String, String>> updateCoordinate(@RequestBody UpdateCoordinate dto) {
+	public ResponseEntity<StatusResponse> updateCoordinate(@RequestBody UpdateCoordinate dto) {
 		Map<String, String> result = new HashMap<>();
 
 		if (dto.type().equals("Member")) {
 			coordinateService.updateMemberCoordinate(dto.id(), dto.latitude(), dto.longitude());
 			batteryService.setMemberBattery(dto.id(), dto.battery());
-			return addOkStatus(result);
+			return ResponseEntity.ok(StatusResponse.of("200"));
 		}
 		coordinateService.updateChildCoordinate(dto.id(), dto.latitude(), dto.longitude());
 		batteryService.setChildBattery(dto.id(), dto.battery());
 		noticeService.sendNotice(dto.id());
-		return addOkStatus(result);
+		return ResponseEntity.ok(StatusResponse.of("200"));
 
 	}
 
 	@PostMapping("/return-coordinate")
-	public ResponseEntity<Map<String, Double>> returnCoordinate(@RequestBody CoordinateRequest dto) {
+	public ResponseEntity<CoordinateAndBatteryResponse> returnCoordinate(@RequestBody CoordinateRequest dto) {
 		Map<String, Double> coordinates;
-
 		if (dto.type().equals("Member")) {
 			int memberBatteryValue = batteryService.getMemberBattery(dto.id());
 			coordinates = coordinateService.getMemberCoordinate(dto.id());
-
 			coordinates.put("battery", (memberBatteryValue * 1.0));
-			return ResponseEntity.ok(coordinates);
+
+			return ResponseEntity.ok(CoordinateAndBatteryResponse.fromMap(coordinates));
 		} else if (dto.type().equals("Child")) {
 			int childBatteryValue = batteryService.getChildBattery(dto.id());
 			coordinates = coordinateService.getChildCoordinate(dto.id());
-
 			coordinates.put("battery", (childBatteryValue * 1.0));
+
 			noticeService.sendNotice(dto.id());
-			return ResponseEntity.ok(coordinates);
+			return ResponseEntity.ok(CoordinateAndBatteryResponse.fromMap(coordinates));
 		}
 		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
 	}
 
 	@PostMapping("/duplicate-check-member")
-	public ResponseEntity<Map<String, String>> duplicateCheckMember(@RequestBody GetIdRequest dto) {
-		Map<String, String> result = new HashMap<>();
+	public ResponseEntity<StatusResponse> duplicateCheckMember(@RequestBody GetIdRequest dto) {
 		if (memberUtil.isPresent(dto.id(), true)) {
-			return addErrorStatus(result);
+			return ResponseEntity.ok(StatusResponse.of("400"));
 		}
 
-		return addOkStatus(result);
+		return ResponseEntity.ok(StatusResponse.of("200"));
 	}
 
 	@PostMapping("/duplicate-check-child")
-	public ResponseEntity<Map<String, String>> duplicateCheckChild(@RequestBody GetIdRequest dto) {
-		Map<String, String> result = new HashMap<>();
+	public ResponseEntity<StatusResponse> duplicateCheckChild(@RequestBody GetIdRequest dto) {
 		if (memberUtil.isPresent(dto.id(), false)) {
-			return addErrorStatus(result);
+			return ResponseEntity.ok(StatusResponse.of("400"));
 		}
 
-		return addOkStatus(result);
+		return ResponseEntity.ok(StatusResponse.of("200"));
 	}
 
 	@PostMapping("/add-parent")
-	public ResponseEntity<Map<String, String>> addParent(@RequestBody MemberRegisterRequest dto) {
-		Map<String, String> result = new HashMap<>();
-
+	public ResponseEntity<StatusResponse> addParent(@RequestBody MemberRegisterRequest dto) {
 		Member foundMember = memberUtil.findMemberById(dto.parentId());
-
 		Child foundChild = memberUtil.findChildByName(dto.childName());
+
 		if (foundChild == null) {
-			return addErrorStatus(result);
+			return ResponseEntity.ok(StatusResponse.of("400"));
 		}
 
 		memberUtil.addParent(foundMember.getMemberId(), foundChild.getChildName());
-		return addOkStatus(result);
+		return ResponseEntity.ok(StatusResponse.of("200"));
 	}
 
-	@Transactional
 	@PostMapping("/find-member-by-child")
-	public ResponseEntity<Map<String, Map<String, String>>> findMemberByChild(@RequestBody GetIdRequest dto) {
-		Map<String, Map<String, String>> result = new HashMap<>();
+	public ResponseEntity<ParentingHelpingListResponse> findMemberByChild(@RequestBody GetIdRequest dto) {
 		Child foundChild = memberUtil.findChildByName(dto.id());
 		if (foundChild == null) {
 			return ResponseEntity.status(400).build();
@@ -429,83 +378,30 @@ public class MemberController {
 		List<Parenting> parentingList = foundChild.getParentingList();
 		if (parentingList != null) {
 			for (int i = 0; i < parentingList.size(); i++) {
-				memberMap1.put(String.valueOf(i + 1),
-					parentingList.get(i).getParent().getMemberId());
+				memberMap1.put(
+					String.valueOf(i + 1),
+					parentingList.get(i).getParent().getMemberId()
+				);
 			}
 		}
-		result.put("Parenting", memberMap1);
-
 
 		Map<String, String> memberMap2 = new HashMap<>();
 		List<Helping> helpingList = foundChild.getHelpingList();
 		if (helpingList != null) {
 			for (int i = 0; i < helpingList.size(); i++) {
-				memberMap2.put(String.valueOf(i + 1),
-					helpingList.get(i).getHelper().getMemberId());
+				memberMap2.put(
+					String.valueOf(i + 1),
+					helpingList.get(i).getHelper().getMemberId()
+				);
 			}
 		}
-		result.put("Helping", memberMap2);
 
-		return ResponseEntity.ok().body(result);
+		return ResponseEntity.ok().body(ParentingHelpingListResponse.from(memberMap1, memberMap2));
 	}
 
 	@PostMapping("/update-nickname")
-	public ResponseEntity<Map<String, String>> updateNickName(@RequestBody UpdateMemberNameRequest dto) {
-		Map<String, String> result = new HashMap<>();
+	public ResponseEntity<StatusResponse> updateNickName(@RequestBody UpdateMemberNameRequest dto) {
 		memberService.updateMemberName(dto);
-
-		return addOkStatus(result);
-	}
-
-
-	private Map<String, String> getChildList(String memberId) {
-		Map<String, String> result = new HashMap<>();
-
-		ArrayList<String> childList;
-		try {
-			childList = memberUtil.findChildList(memberId);
-		} catch (NoSuchElementException e) {
-			return new HashMap<>();
-		}
-		if (childList != null) {
-			for (int i = 0; i < childList.size(); i++) {
-				result.put(String.valueOf(i + 1), childList.get(i));
-			}
-		}
-
-		return result;
-	}
-
-	private Map<String, String> getHelpingList(String memberId) {
-		Map<String, String> result = new HashMap<>();
-
-		ArrayList<String> childList;
-		try {
-			childList = memberUtil.findHelpingList(memberId);
-		} catch (NoSuchElementException e) {
-			return null;
-		}
-		if (childList != null) {
-			for (int i = 0; i < childList.size(); i++) {
-				result.put(String.valueOf(i + 1), childList.get(i));
-			}
-		}
-
-		return result;
-	}
-
-	private static ResponseEntity<Map<String, String>> addOkStatus(Map<String, String> result) {
-		result.put("status", "200");
-		return ResponseEntity.ok().body(result);
-	}
-
-	private static ResponseEntity<Map<String, String>> addErrorStatus(Map<String, String> result) {
-		result.put("status", "400");
-		return ResponseEntity.status(400).body(result);
-	}
-
-	private static ResponseEntity<Map<String, String>> addBindingError(Map<String, String> result) {
-		result.put("status", "403");
-		return ResponseEntity.status(403).body(result);
+		return ResponseEntity.ok(StatusResponse.of("200"));
 	}
 }

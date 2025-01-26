@@ -27,7 +27,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 
 @Service
@@ -167,5 +170,42 @@ public class MemberService {
 			= new UsernamePasswordAuthenticationToken(child.getChildName(), child.getChildPassword(),
 			Collections.singleton(new SimpleGrantedAuthority(Authority.ROLE_CHILD.toString())));
 		return jwtTokenProvider.generateToken(authentication);
+	}
+
+
+	public Map<String, String> getChildList(String memberId) {
+		Map<String, String> result = new HashMap<>();
+
+		ArrayList<String> childList;
+		try {
+			childList = memberUtil.findChildList(memberId);
+		} catch (NoSuchElementException e) {
+			return new HashMap<>();
+		}
+		if (childList != null) {
+			for (int i = 0; i < childList.size(); i++) {
+				result.put(String.valueOf(i + 1), childList.get(i));
+			}
+		}
+
+		return result;
+	}
+
+	public Map<String, String> getHelpingList(String memberId) {
+		Map<String, String> result = new HashMap<>();
+
+		ArrayList<String> childList;
+		try {
+			childList = memberUtil.findHelpingList(memberId);
+		} catch (NoSuchElementException e) {
+			return null;
+		}
+		if (childList != null) {
+			for (int i = 0; i < childList.size(); i++) {
+				result.put(String.valueOf(i + 1), childList.get(i));
+			}
+		}
+
+		return result;
 	}
 }
