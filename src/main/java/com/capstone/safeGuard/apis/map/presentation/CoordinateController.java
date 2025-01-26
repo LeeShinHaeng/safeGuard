@@ -6,7 +6,9 @@ import com.capstone.safeGuard.apis.map.presentation.request.coordinate.AddAreaRe
 import com.capstone.safeGuard.apis.map.presentation.request.coordinate.AreaDetailRequest;
 import com.capstone.safeGuard.apis.map.presentation.request.coordinate.DeleteAreaRequest;
 import com.capstone.safeGuard.apis.map.presentation.request.coordinate.GetChildNameRequest;
+import com.capstone.safeGuard.apis.map.presentation.response.AreaDetailIdResponse;
 import com.capstone.safeGuard.apis.map.presentation.response.AreaDetailResponse;
+import com.capstone.safeGuard.apis.map.presentation.response.AreaListResponse;
 import com.capstone.safeGuard.apis.map.presentation.response.AreaPersistResponse;
 import com.capstone.safeGuard.apis.map.presentation.response.ReadAreaResponse;
 import com.capstone.safeGuard.domain.map.domain.Coordinate;
@@ -49,9 +51,8 @@ public class CoordinateController {
 		return ResponseEntity.ok(StatusOnlyResponse.of(200));
 	}
 
-	// TODO 키 값이 아이디인데 DTO로 리턴하기는 어려울 것 같음, 해결할 방법 찾기
 	@PostMapping("/read-areas")
-	public ResponseEntity<Map<String, ReadAreaResponse>> readAreas(@RequestBody GetChildNameRequest dto) {
+	public ResponseEntity<AreaListResponse> readAreas(@RequestBody GetChildNameRequest dto) {
 		HashMap<String, ReadAreaResponse> result = new HashMap<>();
 
 		// 1. child에 저장되어 있는 coordinate 불러오기
@@ -64,22 +65,21 @@ public class CoordinateController {
 			);
 		}
 
-		return ResponseEntity.ok().body(result);
+		return ResponseEntity.ok().body(AreaListResponse.from(result));
 	}
 
 	@PostMapping("/area-detail")
-	public ResponseEntity<Map<String, AreaDetailResponse>> areaDetail(@RequestBody AreaDetailRequest dto) {
-		Map<String, AreaDetailResponse> result = new HashMap<>();
-
+	public ResponseEntity<AreaDetailIdResponse> areaDetail(@RequestBody AreaDetailRequest dto) {
 		Coordinate coordinate = coordinateService.findAreaById(dto.areaId());
 		if (coordinate == null) {
 			return ResponseEntity.status(400).build();
 		}
 
-		result.put(coordinate.getCoordinateId() + "",
-			AreaDetailResponse.from(coordinate)
+		return ResponseEntity.ok().body(
+			AreaDetailIdResponse.of(
+				String.valueOf(coordinate.getCoordinateId()),
+				AreaDetailResponse.from(coordinate)
+			)
 		);
-
-		return ResponseEntity.ok().body(result);
 	}
 }
