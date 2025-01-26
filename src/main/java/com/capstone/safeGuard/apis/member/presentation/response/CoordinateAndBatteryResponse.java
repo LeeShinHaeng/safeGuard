@@ -1,6 +1,5 @@
 package com.capstone.safeGuard.apis.member.presentation.response;
 
-import com.capstone.safeGuard.domain.map.domain.Coordinate;
 import lombok.Builder;
 
 import java.util.Map;

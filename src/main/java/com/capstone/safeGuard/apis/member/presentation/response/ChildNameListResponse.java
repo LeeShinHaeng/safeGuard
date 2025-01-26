@@ -2,7 +2,6 @@ package com.capstone.safeGuard.apis.member.presentation.response;
 
 import lombok.Builder;
 
-import java.util.List;
 import java.util.Map;
 
 @Builder

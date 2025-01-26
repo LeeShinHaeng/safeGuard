@@ -21,12 +21,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
 @Slf4j
-public class CoordinateController {
+public class AreaController {
 	private final CoordinateService coordinateService;
 
 	@PostMapping("/add-safe")
